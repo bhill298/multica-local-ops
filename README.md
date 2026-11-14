@@ -28,8 +28,10 @@ configuration must not add conflicting approval/sandbox flags. `never` prevents
 approval requests; it is not a filesystem permission grant. Native Windows MXC
 must remain explicit because this Multica version otherwise defaults to full
 access on Windows. The tested effective session policy is `never` with
-`workspace-write`, network enabled. Reading is not confined to the project.
-This is a write boundary, not isolation from all user-readable data.
+`workspace-write`, network enabled, with the standard temporary-directory writes
+permitted. Reading is not confined to the project.
+This is a write boundary, not isolation from all user-readable data. These policy
+checks cover Codex workers; they do not establish equivalent Claude/Agy settings.
 
 Known extra writes should be scoped in the agent's custom arguments. Example:
 
@@ -50,6 +52,7 @@ tools. Only separately authorized, bounded capabilities should be exposed there.
 The scheduled supervisor runs once per minute and at the current user's sign-in.
 It checks structured `daemon status --output json`. A healthy daemon is untouched.
 On absence it starts `daemon start --foreground` in a new **hidden** console.
+It does not forcibly kill a live daemon whose health endpoint is unresponsive.
 Children can inherit that console. Background detached launches and
 `CREATE_NO_WINDOW` alone can leave console-less helpers which create visible
 consoles for grandchildren. The supervisor's own build uses `-H=windowsgui`.
