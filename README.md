@@ -16,7 +16,7 @@ The supervisor accepts one JSON configuration file:
 {
   "cli": "C:/absolute/path/to/multica.exe",
   "profile": "orchestration-trial-20261024",
-  "workspaces_root": "C:/absolute/path/to/test/workspaces",
+  "workspaces_root": "C:/Users/brennan/.multica/workspaces-local",
   "codex_args": "-c approval_policy=\"never\" -c windows.sandbox=\"mxc\" -c features.exec_permission_approvals=false -c features.request_permissions_tool=false",
   "log_dir": "C:/absolute/path/to/logs"
 }
@@ -79,15 +79,21 @@ go build -ldflags=-H=windowsgui -o supervisor.exe .
 `install.ps1 -CandidateRoot <absolute-test-root>` copies reviewed binaries to
 `~/.multica/stock-runtime/bin`, stores nonsecret configuration under
 `~/.multica/local-ops`, and registers `Multica Local Supervisor` without elevation.
-The workspaces path is deliberately explicit; keep that directory while using
-the selected pilot. This installer does not stop active work or disable other
-supervisors; do that as a deliberate transition after checking the daemon is idle.
+The selected workspaces path is `~/.multica/workspaces-local`, outside the
+disposable trial. Keep that directory while using the workspace. This installer
+does not stop active work or disable other supervisors; do that as a deliberate transition after checking the daemon is idle.
 Do not run competing supervisors with different policies on the same profile.
 
 ## Coordination and recovery scope
 
-`coordination-v5-never.txt` retains v5's explicit dispatch receipts, actual-run
-watches, acceptance ownership, monotonic Done, backlog reviews, directory-lock
+`coordination-local.txt` is the current daily contract. It adds source-grounded
+review adjudication, a bounded no-progress rule, and explicit project metadata
+binding for every lead/worker/reviewer issue. A folder named in a description is
+not an attached execution directory. Create children in backlog, verify their
+returned `project_id`, then dispatch.
+
+`coordination-v5-never.txt` preserves the two-hour test contract. It retains v5's
+explicit dispatch receipts, actual-run watches, acceptance ownership, monotonic Done, backlog reviews, directory-lock
 handoff and finite independent root backstop. Its permission guidance now matches
 never-ask operation. Apply these instructions and project-specific boundaries to
 fresh leads; worker prompts need their corresponding narrow responsibilities.
@@ -98,6 +104,47 @@ from command/file permissions. A finite pilot backstop is not an indefinite
 service-level guarantee. Docker Desktop's local backend and this interactive-user
 supervisor require Windows sign-in; pre-login recovery has not been established.
 No auto-login or machine security changes are part of this setup.
+
+## Selected workspace and session lifecycle
+
+Open [Local Work](http://localhost:43130/local-work/chat). This is a fresh
+workspace on the existing local account, using existing provider authentication.
+Mika, the two project leads and Reviewer use `gpt-6.1-sol` with medium effort;
+Builder and Researcher use `gpt-6-luna` with low effort, capacity one per actor.
+The long test used six Luna/low actors. The newer mixed-model readiness check
+closed all four issues in 8m41s without a corrective prompt, rejected a false
+review finding and preserved the source/brief hashes. It is not another two-hour mixed-model benchmark.
+
+**Defaults are not retroactive.** A native wakeup resumes the provider session
+and can retain its previous approval policy and additional directory grants.
+Normal CLI defaults alone did not migrate an old asking session to never.
+Even explicit protocol sandbox overrides did not revoke old extra-directory
+grants. This is why the selected setup uses fresh contexts rather than a resume
+patch. For permission narrowing or unrelated project changes, use a fresh chat
+or agent; an explicit issue rerun also created a fresh provider thread in the
+tested version. Do not rely on a wakeup to reset permissions.
+
+The old workspace is retained as history. Its 61 custom agents are archived;
+stock Multica refuses to archive its built-in Mika, which instead has a retirement
+instruction directing new work here. That instruction is not a hard technical
+execution block. Do not resume old chats or dispatch in the historical workspace.
+The default profile selects Local Work; old files, issues and rollback credentials
+were not deleted or copied.
+
+Start real work by giving Mika an outcome and the authorized project folder.
+Attach that folder to a project before worker dispatch. Use `in_place` by default.
+The worktree smoke required both the repository `.git` and the exact
+`.git/worktrees/worktree` administration directory as pregranted writable roots;
+the parent `.git` grant alone was insufficient on this machine. After changing
+grants, start a fresh attempt. Do not pregrant an entire drive to avoid this setup.
+
+No owner approval broker is running. Unexpected command/file permission needs
+remain blocked under never-ask; configure narrow permissions deliberately and
+retry with a fresh context. Business decisions remain ordinary tracked issues.
+Known reviewed host tools have separate permissions: the tested no-argument
+Office capability could create and verify its own hidden Word/Excel/PDF outputs
+without input injection. It does not establish arbitrary desktop application
+control, and no host MCP tool is globally exposed to all daily agents by default.
 
 ## Evidence and rollback
 
