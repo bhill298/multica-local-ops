@@ -9,7 +9,7 @@ sizes from November 14, 2026; compressed/physical disk usage can differ.
 | Location | Why to keep it |
 | --- | --- |
 | `~/.multica/stock-runtime` | The active stock CLI and supervisor |
-| `~/.multica/local-ops` | The active supervisor configuration/logs; the new installer also uses this as its default runtime root |
+| `~/.multica/local-ops` | Live Compose/private configuration, installed helpers, supervisor logs, upstream checkout and private backups |
 | `~/.multica/profiles/orchestration-trial-20261024` | The active local account/profile, authentication and daemon configuration; its historical name does not make it disposable |
 | `~/.multica/workspaces-local` | The selected workspace's current native execution/session files |
 | `~/.multica/daemon.id` | Current machine identity |
@@ -21,11 +21,13 @@ Do not delete `.codex`, `.claude`, their general configuration files or provider
 authentication. Those are shared tools/logins, not disposable framework artifacts.
 Keep Docker Desktop and WSL distributions; no distribution removal is needed.
 
-The main deployment has not yet been adopted by this package. Its Docker Compose
-file and `.env` still live under the original `tmp` trial directory. Keep that
-directory until deliberate adoption has moved its configuration outside `tmp`.
-The adoption mode preserves both data volumes; it does not require deleting the
-old account or workspace. Back up before later deleting trial history.
+The approved main migration is complete. Multica's Compose file and private
+`.env` now live in `~/.multica/local-ops`; its services no longer depend on the
+original Compose directory under `tmp`. Both data volumes and the existing
+account/workspaces were preserved. Private backups are under the runtime root.
+Historical projects can still reference old files under `tmp`, so retain wanted
+project outputs/history before deleting trial directories. Keep the source repo
+or its ZIP somewhere durable before clearing the temporary workspace.
 
 ## Previous artifacts that can be retired
 

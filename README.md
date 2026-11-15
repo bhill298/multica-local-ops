@@ -139,10 +139,12 @@ preserves team IDs/instructions, and replaces the idle native daemon. The renewa
 switch uses a new ordinary local login and PAT; it does not copy provider
 credentials. Review this mode before using it on a live install.
 
-Adoption was tested against a disposable stack. Moving the main historical
-deployment into this layout was not performed. Its local browser login settings
-were fixed separately. Until adoption, its Docker Compose configuration still
-lives in the original trial directory; keep that directory.
+Adoption passed on a disposable stack and was then applied to the main deployment
+with explicit approval on November 14, 2026. Its database, original data volumes,
+six current agents and their settings were preserved. Browser login and the
+workspace UI were verified afterward. The live Compose configuration and helpers
+now live under `~/.multica/local-ops`, outside the original trial directory.
+Keep any wanted historical project files before retiring the old trial folder.
 
 ## What remains custom
 

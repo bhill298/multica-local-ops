@@ -34,7 +34,8 @@ Other CLI versions/model combinations need their own policy check.
 | Local auth | Requested development/fixed-code/87600h settings applied. Browser-facing HTTP routes accepted the fixed code, rejected a wrong code, issued an HttpOnly cookie and authenticated `/api/me`; server JWT TTL was 315,360,000 seconds. A real headless Edge login against the disposable install reached authenticated chat and retained a 400-day cookie, confirming the browser cap. |
 | Fresh package install | Fetched the actual upstream Git commit, built CLI/supervisor, created a separate Docker stack, signed in locally, provisioned six agents and registered the native supervisor. A real delegated project task wrote 42 and reached accepted closure without operator steering. |
 | Repeat package install | Preserved workspace ID, all team IDs and the private server environment. Rebuilt/restarted successfully without creating a replacement team. |
-| Disposable adoption | Backed up and adopted the separate test stack into another runtime folder. Workspace, team and issue IDs survived. Normal local CLI reauthentication worked. No main-deployment migration was performed. |
+| Disposable adoption | Backed up and adopted the separate test stack into another runtime folder. Workspace, team and issue IDs survived. Normal local CLI reauthentication worked. |
+| Approved main adoption | Completed November 14, 2026. All six current agent IDs, instructions, models and custom arguments matched their pre-migration snapshot. Database counts stayed at one user, two workspaces, 129 issues, 68 total agents including archived history, and 414 runs. Original data volumes and JWT signing secret were preserved. The stock source checkout is clean and independent of tmp. Installed status/backup helpers and a fresh headless browser login/workspace UI passed. Local CLI login was renewed as a normal user PAT. Pre-migration database and post-migration database/uploads/configuration backups were created privately. |
 | Backup helper | Produced a binary PostgreSQL archive, uploads tar and protected configuration copies. Binary streaming and file permissions were checked. Full disaster restore has not been exercised. |
 | In-worker Playwright | Playwright-core 1.65.1 invoked headless Edge with the browser sandbox enabled. Edge exited before page interaction with a named-pipe error. No sandbox settings were loosened. |
 | Browser control outside worker | Identical fixture succeeded with isolated headless Edge 157.0.4341.46 and its sandbox enabled: inputs, click, value42 and PNG screenshot. The worker context remains the unresolved difference. |
@@ -81,4 +82,5 @@ recovery, eight-hour completed run, hard model-spending stop, general desktop
 control, configured browser MCP service or equivalent Claude/Agy security/recovery
 pilot is claimed. Fresh installation was tested on this existing Windows machine
 with prerequisites already present, not a clean Windows VM. Adoption of the main
-working deployment remains a separate reviewed operation.
+working deployment was completed with explicit approval; a full disaster restore
+remains untested.
