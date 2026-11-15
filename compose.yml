@@ -1,0 +1,60 @@
+# Fixed-code authentication is for this loopback-only deployment.
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: multica
+      POSTGRES_USER: multica
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U multica -d multica"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  backend:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:?Set BACKEND_PORT}:8080"
+    environment:
+      DATABASE_URL: postgres://multica:${POSTGRES_PASSWORD}@postgres:5432/multica?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      PORT: "8080"
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT}
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT}
+      MULTICA_APP_URL: http://localhost:${FRONTEND_PORT}
+      GOOGLE_REDIRECT_URI: http://localhost:${FRONTEND_PORT}/auth/callback
+      APP_ENV: ${APP_ENV:?Set APP_ENV}
+      MULTICA_DEV_VERIFICATION_CODE: ${MULTICA_DEV_VERIFICATION_CODE:?Set local code}
+      AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL:?Set AUTH_TOKEN_TTL}
+      ALLOW_SIGNUP: "true"
+      ALLOWED_EMAILS: ${LOGIN_EMAIL:?Set LOGIN_EMAIL}
+      DO_NOT_TRACK: "1"
+    volumes:
+      - backend_uploads:/app/data/uploads
+    restart: unless-stopped
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE}
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:?Set FRONTEND_PORT}:3000"
+    environment:
+      HOSTNAME: "0.0.0.0"
+      REMOTE_API_URL: http://backend:8080
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_WS_URL: ""
+    restart: unless-stopped
+# External volumes survive compose down, including down -v.
+volumes:
+  pgdata:
+    external: true
+    name: ${PG_VOLUME:?Set PG_VOLUME}
+  backend_uploads:
+    external: true
+    name: ${UPLOADS_VOLUME:?Set UPLOADS_VOLUME}

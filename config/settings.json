@@ -1,0 +1,28 @@
+{
+  "upstream_url": "https://github.com/multica-ai/multica.git",
+  "upstream_commit": "dbdbb299164347586e2650bb67684a490726a798",
+  "profile": "orchestration-trial-20261024",
+  "email": "orchestration-trial@example.test",
+  "frontend_port": 43130,
+  "backend_port": 43131,
+  "compose_project": "multica-local",
+  "task_name": "Multica Local Supervisor",
+  "workspace": {
+    "name": "Local Work",
+    "slug": "local-work",
+    "issue_prefix": "LOCAL",
+    "context": "Prefer a visual workspace and an outcome-driven lead that plans, delegates, verifies progress and asks only for real decisions. Support separate coding, research, writing and planning projects and hours-away execution. Use native Windows files and programs; prefer programmatic application APIs to desktop takeover. Keep orchestration local and use existing authenticated models. Do not add provider accounts."
+  },
+  "auth": {"app_env": "development", "verification_code": "888888", "token_ttl": "87600h"},
+  "codex_args": "-c approval_policy=\"never\" -c windows.sandbox=\"mxc\" -c features.exec_permission_approvals=false -c features.request_permissions_tool=false",
+  "lead_model": "gpt-6.1-sol",
+  "lead_effort": "medium",
+  "worker_model": "gpt-6-luna",
+  "worker_effort": "low",
+  "root_guard": {"every": "10m", "max_fires": 48, "expires_in": "8h"},
+  "images": {
+    "backend": "ghcr.io/multica-ai/multica-backend@sha256:1bd213988a0b3290100d38c75122cc9fcfffaeceeabe192e75ae59cf6b4ff9d5",
+    "frontend": "ghcr.io/multica-ai/multica-web@sha256:e366500b9d877b1314fc301d9a47a9de4764a85c0e9ef5e80bf85fb0a8b550bb",
+    "postgres": "pgvector/pgvector@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d"
+  }
+}

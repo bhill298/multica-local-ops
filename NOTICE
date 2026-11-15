@@ -1,0 +1,7 @@
+This project contains Windows installation and operations code for Multica.
+It is not affiliated with or endorsed by the Multica maintainers.
+
+Multica is downloaded from https://github.com/multica-ai/multica at the commit
+listed in config/settings.json. Its own LICENSE and NOTICE remain in that
+checkout. Docker images and provider CLIs retain their respective licenses.
+The installer does not patch or relicense those components.

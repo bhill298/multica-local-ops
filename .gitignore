@@ -1,3 +1,15 @@
 *.exe
 config.json
 logs/
+.env
+.env.*
+install-state.json
+settings.local.json
+*.log
+*.dump
+*.tar
+*.zip
+state/
+build/
+backups/
+upstream/
