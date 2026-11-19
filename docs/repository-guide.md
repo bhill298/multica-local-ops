@@ -13,6 +13,9 @@ package, not an offline image or a backup of the live workspace database.
 | [Operating notes](operating-notes.md) | Everyday permissions, recovery, worktrees, costs, provider differences and project binding |
 | [Security posture](security-posture.md) | Codex, Agy and Claude boundaries, local authentication and host MCP authority |
 | [Adding tools](tools.md) | Per-agent MCP configuration, provider differences and the existing Office fixture |
+| [Office source/setup](../tools/office-fixture/README.md) | Bundled no-argument host MCP, local configuration and optional live checks |
+| [Testing guide](testing-guide.md) | Repeatable source/integration checks and preserved fixtures |
+| [Historical reports](history/README.md) | 29 preserved evaluation, setup, test and intervention notes with current-report precedence |
 | [Cleanup](cleanup.md) | Active files to keep and old test artifacts that can be retired after review |
 | [Coordination contract](../coordination-local.txt) | Delegation, actual-run tracking, corrections, review, acceptance, root timers and project binding |
 | [Settings](../config/settings.json) and [roles](../config/roles.json) | Version/image pins, local defaults, selected models and the six-agent team |
@@ -22,9 +25,9 @@ package, not an offline image or a backup of the live workspace database.
 The tracked files include the upstream Git URL and exact commit, image digests,
 PowerShell installer and management helpers, Go Windows supervisor and its
 tests, settings/team templates, coordination instructions, CI and these
-summarized findings. Browser and Agy boundary diagnostics are optional examples.
-Installation
-fetches and builds the pinned Multica source; this repository carries no Multica
+summarized findings, historical reports and the optional Office MCP source/tests.
+Browser, Agy boundary and durable checkpoint diagnostics are included as examples.
+Installation fetches and builds the pinned Multica source; this repository carries no Multica
 source fork.
 
 On another machine, install the documented prerequisites and sign the provider
@@ -46,14 +49,15 @@ Repeat relevant boundary checks after a provider update.
 | Secrets and provider logins | Private runtime/profile and provider home directories; authenticate normally on a fresh machine |
 | Live account, issues, conversations and uploaded files | Docker database/uploads volumes; use private backups to preserve data rather than publishing it |
 | Generated CLI/supervisor binaries and build caches | Rebuilt by installation under the runtime directories |
-| Detailed old framework trials, patches and raw test transcripts | Historical material under the original `tmp` trials; this package preserves the selected setup and summarized evidence, not every abandoned framework experiment |
-| Fixed Office proof source and generated Office documents | Still under the old trial's `desktop/host` and `desktop/output`; see the exact path in [tools](tools.md). It is not bundled or installed as a daily feature |
+| Raw framework trials, patch exports and model/session transcripts | Relevant narrative reports/plans are preserved in `docs/history`; raw sessions, downloaded upstream trees, retired fork binaries/patch exports and generated deliverables are excluded |
+| Generated Office proof documents/receipts and machine-local MCP config | Ignored under `tools/office-fixture`; source, setup and tests are included |
 
 Consequently, pushing this repository preserves the supported installation work
 and its documentation. It does not save all historical trial artifacts or clone
 the live application state. Keep any wanted historical material and private
-backups separately before deleting `tmp`. The Office fixture's exclusion matters
-if you want to preserve or adapt that optional proof.
+backups separately before deleting `tmp`. The Office source and relevant narrative
+notes no longer depend on retaining the old trial directories. Its generated
+configuration must be regenerated if the repository is moved.
 
 ## Live layout on the tested machine
 
@@ -81,7 +85,7 @@ consult cleanup before removing anything.
 | Broker token separation and installed-path source repair | Removed with the broker. The special broker credential boundary and its path workaround are no longer part of the setup |
 | Recovery supervisor | Retained as independent operations code. Stock daemon-crash and physical reboot recovery after sign-in passed |
 | Coordination and reliable closure | Retained in the contract and goal helper. The long stock pilot and later shorter readiness/provider tests passed, with documented model mistakes and timer recovery |
-| Office proof | Independent of the fork; source still exists separately. It was never a general desktop feature or part of the selected daily team |
+| Office proof | Independent of the fork; source/setup/tests are bundled as an optional tool. It is not a general desktop feature or part of the selected daily team |
 | Permission requests from stock adapters | Automatic approval code still exists. Never-ask avoids that route for Codex; changing to an asking policy does not add owner review |
 
 The main deliberate capability loss is one-off human-reviewed runtime escalation.

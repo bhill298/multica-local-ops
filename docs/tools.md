@@ -39,25 +39,25 @@ configuration route needs separate integration and verification.
 
 ## Existing Office fixture
 
-The original fixed Office MCP source remains at:
-
-```text
-C:/Users/brennan/Desktop/proj/tmp/scratch-projects/multica-minimal-2026-11-14/desktop/host/server.mjs
-```
+The fixed Office MCP source is bundled in
+[tools/office-fixture](../tools/office-fixture/README.md). Its server and probe
+no longer depend on the old trial directory. The package includes a local
+configuration generator, protocol checks and opt-in live Office verification.
 
 It exposes one no-argument operation, `run_hidden_office_fixture`. It pins the
 PowerShell probe's hash, permits one call per server process and uses a fixed
 output directory. It creates owned hidden Excel/Word instances, checks a formula
 result of 42, saves/reopens the spreadsheet, and exports a Word document and PDF.
 It refuses to share an existing Word process. It does not operate on arbitrary
-documents or provide a general command runner. Its PowerShell and output paths
-are specific to this machine. Those files were never part of the Multica fork.
+documents or provide a general command runner. Output uses fresh directories
+under the package's ignored output root. PowerShell 7 is selected through the
+owner-generated local configuration. Those files were never part of the Multica fork.
 
-The fixture passed with stock Multica in earlier testing. It is preserved as a
-test artifact, not installed as a daily tool or bundled into this package. Keep
-the old `desktop/host` and `desktop/output` directories together if reusing it;
-moving or adapting it requires updating the fixed paths and rechecking its hash
-and behavior. The six daily agents currently have no per-agent MCP configuration.
+The original fixture passed with stock Multica in earlier testing. The relocated
+copy passed a direct MCP call with independently checked Excel/Word/PDF outputs.
+It is an optional tool, not installed on the daily team. The six daily agents
+currently have no per-agent MCP configuration. Clone the repository to a durable
+location and generate its local MCP configuration there before attaching it.
 
 More useful Office operations can be written as separate tools with explicit
 document/path scopes. That is additional tool development and testing, not a

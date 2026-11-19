@@ -80,6 +80,14 @@ deleting current application data or provider logins.
 
 ## Verify before removing anything
 
+The current repository now includes the Office tool source, its setup/tests,
+the durable checkpoint source and 29 relevant historical setup/testing reports.
+Those source/notes no longer require the old `desktop/host` or report directories.
+Generated Office documents, raw receipts, provider sessions, retired fork exports
+and live database/backups remain excluded. Push or save the repository somewhere
+durable before clearing `tmp`; the source repository itself is currently there.
+Do not confuse preserving source/notes with backing up live application data.
+
 The later Agy boundary tests used five additional disposable actors and five
 dedicated Agy project policy files. After verification, the actors were archived
 and only those dedicated policy files were removed. Global Agy permissions,

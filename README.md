@@ -151,9 +151,9 @@ Keep any wanted historical project files before retiring the old trial folder.
 
 The Go supervisor is custom code. The PowerShell installer, management/goal
 helpers and the role/coordination settings are also custom. They call stock
-Multica's CLI/API and do not patch it. The Office automation used in testing was
-a separate fixed test MCP tool; it is summarized here but not enabled or bundled
-as a general Office feature. No generic desktop or browser-control service is
+Multica's CLI/API and do not patch it. The separate fixed
+[Office MCP tool](tools/office-fixture/README.md) is now bundled with portable
+setup and tests. It is optional and is not enabled on the daily agents. No generic desktop or browser-control service is
 installed. [The browser example](examples/browser-proof.mjs) is a diagnostic:
 it passed outside a worker but failed during Edge startup inside the tested
 native Codex sandbox. Do not treat it as a working in-worker browser integration.
@@ -169,10 +169,13 @@ native Codex sandbox. Do not treat it as a working in-worker browser integration
   worktrees, browser automation and provider coverage in plain English.
 - [Cleanup guide](docs/cleanup.md): what to keep and what previous tests left outside `tmp`.
 - [Adding tools](docs/tools.md): per-agent MCP configuration and the existing Office fixture.
+- [Testing guide](docs/testing-guide.md): repeatable checks, fixtures and evidence limits.
+- [Historical notes](docs/history/README.md): 29 preserved comparison, setup and test reports.
 
 ```powershell
 go test ./...
 go vet ./...
+node --test ./tests/office-fixture.test.mjs
 pwsh -NoProfile -File .\tests\installer.tests.ps1 -Docker
 ```
 

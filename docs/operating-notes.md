@@ -34,10 +34,10 @@ automation of arbitrary Office documents or desktop programs. Host tools run
 with their own permissions outside the command sandbox; exposing one needs a
 separate review of what it permits.
 
-The existing Office fixture is still available in the old local test directory;
+The Office fixture is now bundled with [portable setup and tests](../tools/office-fixture/README.md);
 it was independent of the source fork. It is not attached to the six daily agents
-and is not a general Office driver. Preserve that directory if you want to reuse
-it. See [adding tools](tools.md) for how stock Multica accepts per-agent MCP
+and is not a general Office driver. Keeping the original trial folder is no
+longer required to preserve its source. See [adding tools](tools.md) for how stock Multica accepts per-agent MCP
 configuration and which provider paths have been inspected.
 
 ## Cost reporting and spending limits

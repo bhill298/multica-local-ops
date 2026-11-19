@@ -32,7 +32,7 @@ Other CLI versions/model combinations need their own policy check.
 | v6 readiness | Correctly rejected the false review claim but omitted project metadata on children; the requested write was denied because execution started elsewhere. Preserved as a failed configuration/prompt test. |
 | v7 mixed-model readiness | Four issues Done in 8m41s; 14 completed, two redundant queued runs cancelled, zero failed/active runs and enabled wakeups. Correct project bindings, independent review, rejected false claim and unchanged source/brief hashes verified. No corrective operator prompt. Stronger decision roles and prompt changes happened together; their individual effects were not isolated. |
 | Actual linked worktree | Initial `.git` grant did not permit its worktree administration-directory write. Adding that exact root and using a fresh attempt allowed a real commit. Original checkout/HEAD unchanged. Operator independently verified and accepted this isolated smoke; its worker had omitted final status closure. |
-| Fixed Office host capability | Hidden owned Excel/Word instances created and verified outputs. Spreadsheet formula/cached42, Word text and PDF header independently checked. No foreground takeover or input injection. General Office/desktop automation not established. |
+| Fixed Office host capability | Hidden owned Excel/Word instances created and verified outputs. Spreadsheet formula/cached 42, Word text and PDF header independently checked. No foreground takeover or input injection. General Office/desktop automation not established. |
 | Console visibility | Hidden inherited-console launcher corrected the observed detached-launch path. Startup, 180-second crash/recovery and roughly 484-second final windows had no unexpected visible console events. A nonactivating off-screen positive control was detected. No continuous two-hour observer output was retained. |
 | Local auth | Requested development/fixed-code/87600h settings applied. Browser-facing HTTP routes accepted the fixed code, rejected a wrong code, issued an HttpOnly cookie and authenticated `/api/me`; server JWT TTL was 315,360,000 seconds. A real headless Edge login against the disposable install reached authenticated chat and retained a 400-day cookie, confirming the browser cap. |
 | Fresh package install | Fetched the actual upstream Git commit, built CLI/supervisor, created a separate Docker stack, signed in locally, provisioned six agents and registered the native supervisor. A real delegated project task wrote 42 and reached accepted closure without operator steering. |
@@ -78,6 +78,24 @@ The reusable [probe and method](../examples/agy-boundary.md) are included withou
 raw authenticated session artifacts.
 
 ## Package validation and failures
+
+The Office source was subsequently relocated into this repository. Old absolute
+trial paths were removed, outputs now use fresh ignored directories, and the
+owner selects an absolute PowerShell 7 executable through generated local MCP
+configuration. The live direct-MCP check passed with Node 24.16.0/PowerShell 7.6.3
+in about six seconds: hidden owned instances, saved Excel formula/cached 42,
+Word XML and PDF header. All four protocol/guard/live groups passed. It was not
+attached to or retested through a new daily agent. An initial Windows
+PowerShell 5.1/STA attempt timed out while starting Word; its verified new hidden
+Word process was cleaned up by exact identity. Version and apartment launch
+options changed together, so the cause was not isolated. PowerShell 5.1 is not a
+supported fallback. The tool timeout can leave a newly created Office process
+if COM blocks; see its README. Generated outputs and receipts are not committed.
+
+The repository also preserves 29 historical reports/plans and the unchanged
+small Windows checkpoint fixture used in the physical reboot test. Historical
+files carry precedence/provenance banners; links to excluded artifacts are
+labeled. See [testing guide](testing-guide.md) for current methods and exclusions.
 
 The supervisor's three Go tests passed and `go vet` passed. The installer suite
 passed nine groups covering PowerShell parsing, invalid configuration rejection,

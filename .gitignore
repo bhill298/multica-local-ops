@@ -14,3 +14,8 @@ build/
 backups/
 upstream/
 __pycache__/
+tools/office-fixture/output/
+tools/office-fixture/mcp.local.json
+examples/recovery/*.json
+examples/recovery/*.jsonl
+examples/recovery/writer.lock
