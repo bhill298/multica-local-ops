@@ -80,6 +80,13 @@ deleting current application data or provider logins.
 
 ## Verify before removing anything
 
+The later Agy boundary tests used five additional disposable actors and five
+dedicated Agy project policy files. After verification, the actors were archived
+and only those dedicated policy files were removed. Global Agy permissions,
+Claude settings and the six daily agents were unchanged. Private raw receipts
+and canaries remain under `tmp/scratch-projects/multica-agy-boundary-2026-11-18`;
+the small diagnostic source/method are included in this repository's examples.
+
 Check that no active project/resource or process uses the target path. Keep a
 private backup if rollback or historical local outputs matter. Remove named
 items individually after checking their resolved paths, rather than deleting

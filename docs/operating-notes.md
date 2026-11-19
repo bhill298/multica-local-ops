@@ -197,6 +197,18 @@ provider credentials. The extra provider actors were isolated test agents.
 All eight actors created for the reboot/provider follow-up were archived after
 verification. Their project issues and history remain available.
 
+The subsequent Agy Windows test established partial protection. With `--sandbox`,
+commands really ran in an AppContainer and failed on outside writes, including
+from a child process. Corrected absolute-path deny rules blocked specified native
+file writes and a command marker. An explicitly unsandboxed command still wrote
+an outside canary under stock Multica's forced bypass mode. The blanket escape
+deny was not usable with normal commands. No policy was deployed to the daily
+team. See [security posture](security-posture.md).
+
+Claude's built-in command sandbox supports WSL2/Linux, not native Windows.
+No Claude settings were changed in the Agy test. WSL2 would need its own boundary
+and Windows-interop checks before making a containment claim.
+
 ## Root guards and project folders
 
 The default guard asks the lead to recheck a goal every ten minutes, up to 48

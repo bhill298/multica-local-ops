@@ -160,6 +160,10 @@ native Codex sandbox. Do not treat it as a working in-worker browser integration
 
 ## Findings, cleanup and development
 
+- [Repository guide](docs/repository-guide.md): documentation map, what Git preserves,
+  live paths and the tradeoffs from removing the fork.
+- [Security posture](docs/security-posture.md): the distinct Codex, Agy and Claude
+  boundaries; Claude's command sandbox requires WSL2/Linux on this Windows host.
 - [Test summary](docs/findings.md): successes, failed attempts and coverage gaps.
 - [Operating notes](docs/operating-notes.md): permissions, recovery, cost reporting,
   worktrees, browser automation and provider coverage in plain English.
