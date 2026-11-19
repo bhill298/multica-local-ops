@@ -1,9 +1,10 @@
 # Test findings
 
 These are the results relevant to the stock configuration selected on November
-14, 2026. Detailed transcripts, generated documents and old patch exports are
-deliberately excluded from this repository. This summary preserves failures and
-coverage limits along with the successful outcomes.
+14, 2026, with follow-up testing on November 18. Detailed transcripts, generated
+documents and old patch exports are deliberately excluded from this repository.
+This summary preserves failures and coverage limits along with the successful
+outcomes.
 
 ## Selected components
 
@@ -23,6 +24,8 @@ Other CLI versions/model combinations need their own policy check.
 | Static grants and native continuation | Narrow extra-folder and in-place Git metadata grants worked, including a real commit. A native wakeup retained the fresh session's grant, never policy and outside denial. |
 | Legacy-session migration | New CLI defaults did not replace an old asking policy on resume. Explicit protocol sandbox overrides also did not revoke old extra-directory grants. Fresh contexts were selected; an experimental resume patch was not deployed. |
 | Real daemon crash | Killed at 26 checkpoints. Scheduled supervisor restarted installed stock CLI; saved prefix unchanged and all 30 final hash-chain records verified. Lead/root accepted closure without corrective prompts. The injected fault produced two failed runs; recovery totals were three completed and two cancelled. |
+| Physical Windows reboot, stock deployment | November 18: Windows Restart interrupted a real writer. After sign-in the installed supervisor and Docker stack recovered without a manual restart. A fresh worker attempt validated the existing 115-record prefix, appended 15 records and produced a verified 130-record hash chain. The separately saved 20-record prefix remained byte-for-byte unchanged. Lead accepted both issues Done; no active runs or enabled guards remained. No corrective operator prompts. |
+| Startup before sign-in | Boot was 04:28:01 UTC November 19; Windows recorded actual logon at 04:30:40, about 159 seconds later. Container and native daemon startup timestamps were after logon. The supervisor uses Interactive/Limited logon and Docker Desktop autostart is enabled. This installation did not recover work before sign-in. Docker Desktop/engine restarted again during startup; the cause was not established. |
 | Long mixed-project workflow | All 17 issues eventually Done in about 2h36m; 63 completed runs, zero failed, four redundant queued runs cancelled. No corrective operator prompts or runtime changes during the run. Late correction, one-hour audit and two-hour exercise-only decision were predeclared. Six Luna/low actors. |
 | Long-run deliverables | Code passed ten independent acceptance groups, 13 deliverable tests and actual 10,000-row/full+filtered queries. Inputs and final tested implementation hashes matched. Planning constraints, $75/$90 arithmetic and exercise-only approval/no booking passed. |
 | Model-quality detour | A false review claim about a source date led to repeated status and unnecessary wording work before autonomous correction/re-review. The final plan still carried an unnecessary date caveat. Eventual workflow completion was not flawless reasoning. |
@@ -40,7 +43,10 @@ Other CLI versions/model combinations need their own policy check.
 | In-worker Playwright | Playwright-core 1.65.1 invoked headless Edge with the browser sandbox enabled. Edge exited before page interaction with a named-pipe error. No sandbox settings were loosened. |
 | Browser control outside worker | Identical fixture succeeded with isolated headless Edge 157.0.4341.46 and its sandbox enabled: inputs, click, value42 and PNG screenshot. The worker context remains the unresolved difference. |
 | Usage reporting | Token rows and UI estimates observed. No provider-supplied dollar prices in inspected Codex usage rows. No invoice reconciliation or hard-spend-cap test; planning budgets were unrelated. |
-| Other providers | Stored Multica execution history inspected was entirely Codex. Claude/Agy runtime detection does not establish working authenticated Multica integration. Claude ran separate Firstmate/Herdr tests. |
+| Claude authenticated workflow | November 18: Claude Code 2.1.322 with the existing Max login and explicit `claude-haiku-4-5-20251001` ran a lead/builder/independent-reviewer workflow. Correct Python output, Decimal total 42.00, Unicode names, input hash and source-summary content independently verified. All three issues accepted Done, no failed runs or active work/guards at acceptance. The lead initially omitted worker dispatch; its scheduled backstop corrected this without an operator prompt. |
+| Agy authenticated workflow | November 18: Agy 1.5.12, restricted to `gemini-3.8-flash-low`, completed the equivalent three-actor workflow. Actual usage rows named only that model. Correct files, independent review and accepted closure passed, with no failed runs or active work/guards at acceptance. No fallback to another model. |
+| Changed requirement with both providers | Explicitly reopened the accepted roots after changing an input and specification: total 42.00/source revision 2 became total 43.00/source revision 3. Both leads reused their existing children, dispatched fresh implementation and independent review runs, and accepted the corrected hierarchy Done. Fresh review started after implementation completion; current artifacts/hash/Unicode/source content passed independent checks. No repair prompts, new login or runtime changes. Final totals across both stages: Claude 15 runs, Agy 17, zero failed, zero active and no enabled guards. |
+| Provider token versus dollar tracking | Both new providers produced token/cache usage rows. Their inspected dollar-cost fields were null; the aggregate returned zero cost with nonzero uncosted tokens. This verifies token ingestion, not accurate dollar totals, free usage or a hard spending stop. |
 
 ## Package validation and failures
 
@@ -75,12 +81,22 @@ the CLI required input before flags, and deliverable tests needed the project
 working directory. Original failed receipts were retained in the trial history,
 not included here.
 
+The additional provider pilots each took about eight minutes per stage, including
+lead backstops and continuation runs. Successful final closure does not mean
+every model action was correct: Claude initially omitted dispatch and tried an
+unsupported wakeup flag before consulting help. The backstop recovered the
+workflow without operator repair. These small tests also used substantial cached
+context; they are not an efficiency or cost benchmark. All eight disposable
+follow-up actors were archived after verification, preserving the issues and
+history. The six daily Codex agents were not reconfigured.
+
 ## Coverage limits
 
-No new physical reboot was run on the reduced stock deployment. No pre-login
-recovery, eight-hour completed run, hard model-spending stop, general desktop
-control, configured browser MCP service or equivalent Claude/Agy security/recovery
-pilot is claimed. Fresh installation was tested on this existing Windows machine
-with prerequisites already present, not a clean Windows VM. Adoption of the main
+Physical reboot recovery after Windows sign-in passed on the reduced stock
+deployment. No pre-login recovery, eight-hour completed run, hard model-spending
+stop, general desktop control, configured browser MCP service or equivalent
+Claude/Agy sandbox/reboot pilot is claimed. Fresh installation was tested on
+this existing Windows machine with prerequisites already present, not a clean
+Windows VM. Adoption of the main
 working deployment was completed with explicit approval; a full disaster restore
 remains untested.

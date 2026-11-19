@@ -68,6 +68,16 @@ Its `multica-package-smoke_*` resources and temporary CLI profile are removed
 after validation; its raw results remain under `tmp`, outside this repo. No
 previous Swarm/Cabinet/Herdr or historical Multica data was removed.
 
+The November 18 reboot and provider follow-up added synthetic projects and
+execution history to the active database and generated run directories under
+the active workspace root. Its eight disposable agents were archived afterward;
+the six daily agents were unchanged. No additional startup task or provider
+account was added. Its raw checkpoint/provider files are under
+`tmp/scratch-projects/multica-stock-followup-2026-11-18`, outside this package.
+Those test projects retain local directory references there. Retiring those
+files makes the historical resource paths unavailable; it does not require
+deleting current application data or provider logins.
+
 ## Verify before removing anything
 
 Check that no active project/resource or process uses the target path. Keep a

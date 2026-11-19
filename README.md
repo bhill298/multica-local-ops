@@ -119,8 +119,9 @@ The default installed locations are:
 
 The helpers are also copied into the runtime folder. Once installed, normal
 operation does not depend on keeping this Git checkout in its original location.
-Docker Desktop must be running. Sign-in recovery before Windows login has not
-been established. Automatic Multica CLI updates/reloads are disabled to keep the
+Docker Desktop must be running. Physical reboot recovery after Windows sign-in
+passed on the stock setup; this installation did not recover work before sign-in.
+Automatic Multica CLI updates/reloads are disabled to keep the
 tested version; upgrades require changing the pins and retesting. Codex can
 update separately, so inspect effective policy after provider CLI upgrades.
 
@@ -163,6 +164,7 @@ native Codex sandbox. Do not treat it as a working in-worker browser integration
 - [Operating notes](docs/operating-notes.md): permissions, recovery, cost reporting,
   worktrees, browser automation and provider coverage in plain English.
 - [Cleanup guide](docs/cleanup.md): what to keep and what previous tests left outside `tmp`.
+- [Adding tools](docs/tools.md): per-agent MCP configuration and the existing Office fixture.
 
 ```powershell
 go test ./...

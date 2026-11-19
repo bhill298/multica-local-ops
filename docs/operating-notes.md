@@ -34,6 +34,12 @@ automation of arbitrary Office documents or desktop programs. Host tools run
 with their own permissions outside the command sandbox; exposing one needs a
 separate review of what it permits.
 
+The existing Office fixture is still available in the old local test directory;
+it was independent of the source fork. It is not attached to the six daily agents
+and is not a general Office driver. Preserve that directory if you want to reuse
+it. See [adding tools](tools.md) for how stock Multica accepts per-agent MCP
+configuration and which provider paths have been inspected.
+
 ## Cost reporting and spending limits
 
 Multica recorded provider/model token usage, and its UI displayed estimated
@@ -41,6 +47,11 @@ costs. We did not reconcile those estimates with an invoice. At the inspection,
 stored usage rows covered Codex Luna, Sol and Astra models; none contained a
 provider-supplied dollar price. A dollar figure derived from a rate table can
 differ from the amount paid on an authenticated subscription.
+
+The November 18 Claude and Agy pilots also recorded nonzero token/cache counts.
+Their inspected dollar-cost fields were null. The issue aggregate returned zero
+cost while identifying the tokens as uncosted. That zero does not mean the work
+was free or that Multica calculated the provider bill correctly.
 
 No hard spending cap is configured or validated in this setup. The tests do not
 show that Multica will stop at a dollar limit. Some adapters accept provider CLI
@@ -62,11 +73,21 @@ be repeated if the crash happens between doing it and recording completion, so
 tasks should check existing results before repeating a write, booking or message.
 Exactly-once external side effects were not established.
 
-The reduced stock setup has not had another physical Windows reboot test.
-Earlier physical-reboot passes used the old fork. Docker Desktop and the
-user-level supervisor depend on Windows sign-in; operation before sign-in has
-not been established. A hung-but-live daemon is not forcibly killed by this
-supervisor.
+The reduced stock setup passed a physical Windows Restart on November 18.
+An interrupted writer recovered in a fresh attempt, validated 115 preserved
+records and appended 15 more. All 130 chained records and the separately saved
+prefix passed independent checks. The lead closed its root and child and removed
+obsolete guards without a corrective operator prompt. The user only restarted
+Windows, waited at sign-in and signed in.
+
+This setup needs Windows sign-in. Windows logon was recorded about 159 seconds
+after boot; the observed container and daemon startups followed logon. Docker
+Desktop autostart is enabled and the supervisor task requires an interactive
+session. Docker Desktop/engine restarted again during that startup; the cause
+was not established, and recovery still completed. This test does not establish
+unattended recovery while the machine remains at the sign-in screen. A
+hung-but-live daemon is not forcibly killed by the supervisor. The observed
+sign-in dependency belongs to this Docker Desktop/user-task installation.
 
 ## Git worktrees
 
@@ -146,11 +167,35 @@ classify every failure as harmless, and the full suite cannot be called green.
 It reduces confidence in code paths outside the focused real tests. It does not
 establish 209 separate failures in the workflow that was exercised successfully.
 
-All stored Multica executions inspected used Codex. Claude and Antigravity
-runtimes were detected, but no equivalent authenticated Multica pilot, recovery
-or security-policy test was completed for them. Claude did run real code/planning
-tests in Firstmate/Herdr; that does not validate Multica's Claude adapter. The
-installer provisions Codex agents only and does not copy provider credentials.
+On November 18 both additional providers completed real authenticated Multica
+workflows using their existing logins. Claude Code 2.1.322 used the Max login and
+`claude-haiku-4-5-20251001`; Agy 1.5.12 used only `gemini-3.8-flash-low`. Each
+provider ran its own lead, builder and independent reviewer. Both produced
+correct files and reached accepted closure. Actual usage rows matched those
+models. Claude's lead initially omitted worker dispatch and recovered on its
+next scheduled check without operator correction. These were short synthetic
+workflows, not repetitions of the multi-hour Codex or physical-reboot pilot.
+
+Both also handled an explicit new requirement after acceptance. An input changed
+the total from 42.00 to 43.00 and the current source revision changed from 2 to 3.
+Each lead reopened the existing work, obtained a fresh implementation attempt and
+a fresh independent review, and accepted the new results. Independent checks
+verified the review followed implementation, all three issues were Done, and no
+active runs or enabled guards remained. No repair prompt or runtime change was
+needed. Both stages together used 15 Claude runs and 17 Agy runs with no failed
+runs. A zero failed-run count does not mean every command or model decision was
+correct. The backstop remains useful, and these were short synthetic projects.
+
+The permission modes differ materially. The inspected stock Claude adapter
+forces `--permission-mode bypassPermissions` and allows permission control
+requests. The Agy adapter always adds `--dangerously-skip-permissions`. These
+tests were limited by instructions to disposable synthetic project folders;
+they did not establish the Codex MXC filesystem boundary for either provider.
+Do not assume the machine-wide Codex never/MXC arguments constrain Claude or
+Agy. The installer still provisions only the six Codex agents and copies no
+provider credentials. The extra provider actors were isolated test agents.
+All eight actors created for the reboot/provider follow-up were archived after
+verification. Their project issues and history remain available.
 
 ## Root guards and project folders
 
