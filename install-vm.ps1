@@ -19,5 +19,5 @@ $arguments='-NoProfile -File "{0}" -Media "{1}" -Name {2} -Processors {3} -Maxim
 $proc=Start-Process (Get-Process -Id $PID).Path -WindowStyle Hidden -Verb RunAs -ArgumentList $arguments -PassThru -Wait
 if ($proc.ExitCode) { throw "Hyper-V setup failed. See $env:ProgramFiles/MulticaVM/$Name/provision.log." }
 & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision
-& "$PSScriptRoot/hyperv/Install-Relay.ps1" -Name $Name -Directory $Directory
+& "$PSScriptRoot/hyperv/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive
 if (!$SkipProjectDrive) { & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action MapProjects }

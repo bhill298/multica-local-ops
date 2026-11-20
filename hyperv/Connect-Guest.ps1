@@ -30,17 +30,7 @@ switch ($Action) {
     }
     Status { ssh @opts $target "$compose ps" }
     Goal { $Goal | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/new-goal.py' }
-    MapProjects {
-        $share="\\$address\MulticaProjects"
-        $existing=Get-PSDrive -PSProvider FileSystem | Where-Object DisplayRoot -eq $share | Select-Object -First 1
-        if ($existing) { Write-Host "$($existing.Name): $share"; return }
-        $letter=(90..68 | ForEach-Object { [string][char]$_ } | Where-Object { !(Get-PSDrive $_ -ErrorAction SilentlyContinue) } | Select-Object -First 1)
-        if (!$letter) { throw 'No free drive letter for the project folders.' }
-        $secret=ssh @opts $target 'sudo cat /var/lib/multica-local/share-password'
-        $cred=[pscredential]::new('multicafiles',(ConvertTo-SecureString $secret -AsPlainText -Force))
-        $secret=$null
-        New-PSDrive -Name $letter -PSProvider FileSystem -Root $share -Credential $cred -Scope Global -Persist
-    }
+    MapProjects { & "$PSScriptRoot/Map-Projects.ps1" -Name $Name -Directory $Directory }
     Shell { ssh @opts -t $target }
     Auth {
         $authCmd=@{codex='codex login --device-auth';claude='claude auth login --claudeai';agy='agy --model gemini-3.8-flash-low'}[$Provider]

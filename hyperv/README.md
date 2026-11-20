@@ -55,8 +55,11 @@ from Explorer. All three daily workers see the input as read-only and exchange
 as read/write, including deletions. The data lives under `/srv/multica/project`
 on the VM disk. Keep originals and backups on Windows elsewhere. Windows uses
 an encrypted Samba share with a files-only credential. No Windows password or
-Windows drive is mounted in the workers. Use `-Action MapProjects` to remap
-after a guest IP change. SSH alternatives are `-Action Put -Path <input>`,
+Windows drive is mounted in the workers. A user logon task reconnects the
+drive using the current guest address and the SSH-verified share credential.
+It remembers the drive letter and previous share and preserves unrelated
+mappings. Use `-Action MapProjects` to reconnect immediately. SSH alternatives
+are `-Action Put -Path <input>`,
 `PutExchange` and `Get -Path <destination-directory>`.
 
 ## VM administrator
@@ -100,3 +103,28 @@ separation, production restore of filesystem and PostgreSQL state, and five
 scheduled checkpoints with four retained. The canaries covered the Windows
 gateway and Windows LAN interface. Other LAN devices were covered by policy,
 not individually probed.
+
+## Physical Windows reboot test, November 20, 2026
+
+The host booted at 12:29:47 Mountain time. Ubuntu booted at 12:30:28, the
+Codex container started at 12:30:33, and the Windows console sign-in event
+was at 12:47:16. Stock Multica marked the interrupted Builder execution
+failed. A new execution on the same child issue picked up the durable
+checkpoint, appended ten records between 12:31:46 and 12:32:05, and
+completed. Reviewer finished independently. Mika closed the root at
+12:34:49 and the root timer was disabled. All this happened before sign-in
+without operator intervention.
+
+The independent verification checked all 926 linked records (916 from the
+first guest boot and 10 from the next). The first ten records still matched
+the bytes saved on Windows before restart. This test covers a graceful
+Windows restart and a checkpoint-aware workload. It does not establish
+exactly-once external side effects or recovery from a power cut.
+
+The dashboard returned HTTP 200 and the admin daemon and admin containers
+stayed offline. Hyper-V changed the guest subnet. The refreshed network
+policy passed both host canaries again. The old persistent Explorer mapping
+was unavailable after sign-in. The new logon task was exercised against
+that actual stale mapping and restored the same drive letter. A worker-created
+file and the checkpoint prefix were both read through the repaired drive.
+The drive fix was tested by invoking the registered logon task after this boot.

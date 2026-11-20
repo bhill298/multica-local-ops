@@ -1,4 +1,4 @@
-param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media")
+param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",[switch]$SkipProjectDrive)
 $ErrorActionPreference='Stop'
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
 $profileDir=Split-Path ([IO.Path]::GetFullPath($Directory))
@@ -19,3 +19,15 @@ $trigger=New-ScheduledTaskTrigger -AtLogon -User $user
 $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName $taskName -Trigger $trigger -Action $action -Principal $principal -Settings $settings -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
+$mapTask="$Name project drive"
+if ($SkipProjectDrive) {
+    if (Get-ScheduledTask -TaskName $mapTask -ErrorAction SilentlyContinue) { Disable-ScheduledTask -TaskName $mapTask | Out-Null }
+    return
+}
+$mapper=Join-Path $dir Map-Projects.ps1
+Copy-Item "$PSScriptRoot/Map-Projects.ps1" $mapper -Force
+$cmd='powershell.exe -NoLogo -NoProfile -NonInteractive -File "{0}" -Name "{1}" -Directory "{2}"' -f $mapper,$Name,([IO.Path]::GetFullPath($Directory))
+$vbs=Join-Path $dir projects.vbs
+('WScript.Quit CreateObject("WScript.Shell").Run("{0}", 0, True)' -f $cmd.Replace('"','""')) | Set-Content $vbs -Encoding Unicode
+$action=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/wscript.exe" -Argument ('//B //Nologo "{0}"' -f $vbs)
+Register-ScheduledTask -TaskName $mapTask -Trigger $trigger -Action $action -Principal $principal -Settings $settings -Force | Out-Null
