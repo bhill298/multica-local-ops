@@ -5,3 +5,13 @@ Multica is downloaded from https://github.com/multica-ai/multica at the commit
 listed in config/settings.json. Its own LICENSE and NOTICE remain in that
 checkout. Docker images and provider CLIs retain their respective licenses.
 The installer does not patch or relicense those components.
+
+linux-worker/browser-seccomp.json is distributed from Microsoft Playwright
+v1.59.1 under the Apache License 2.0. See linux-worker/LICENSE-playwright.
+Playwright's upstream notice follows:
+
+Playwright
+Copyright (c) Microsoft Corporation
+
+This software contains code derived from the Puppeteer project (https://github.com/puppeteer/puppeteer),
+available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/blob/master/LICENSE).
