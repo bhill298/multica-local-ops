@@ -93,7 +93,8 @@ workers use the public IPv4 internet. Add destination CIDRs to
 boot task to apply (this can briefly interrupt networking). Inspect the VM in
 Hyper-V Manager. Services in the guest apply Ubuntu security updates and permit
 required guest restarts at 04:00 guest time. Refresh app and provider images
-separately. See [Ubuntu upgrades](../linux-guest/README.md).
+separately. See [Multica updates and rollback](../docs/update-multica.md) and
+[Ubuntu upgrades](../linux-guest/README.md).
 
 Weekly production checkpoints default to Sunday 03:00 host time with four
 retained. The task checks free space and prunes only after successfully creating

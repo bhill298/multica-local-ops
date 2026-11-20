@@ -11,6 +11,9 @@ artifacts. It does not include the old approval broker or its source patches.
 
 ## Install
 
+Already running the Ubuntu VM? Run `./update-vm.ps1` to check for a Multica
+release. See [update, restore and backup cleanup](docs/update-multica.md).
+
 For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
 and follow the [VM operating guide](hyperv/README.md). See the [Ubuntu upgrade
 workflow](linux-guest/README.md) and [worker tools](linux-worker/README.md).

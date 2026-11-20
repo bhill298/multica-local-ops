@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE = Path("/var/lib/multica-local")
 PROVIDERS = ("codex", "claude", "agy")
 SETTINGS = json.loads((ROOT / "config/settings.json").read_text())
+if (STATE / "release-pins.json").exists():
+    pins = json.loads((STATE / "release-pins.json").read_text())
+    SETTINGS["upstream_commit"] = pins["commit"]
+    SETTINGS["images"].update({key: pins[key] for key in ("backend", "frontend")})
 PORT = 43130
 
 
