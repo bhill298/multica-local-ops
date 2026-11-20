@@ -5,6 +5,9 @@ The current Docker inventory and approved live restoration are recorded in
 Multica containers, its two named data volumes and two unrelated model-cache
 volumes remain. Nine empty anonymous volumes, two unused trial networks and an
 obsolete Agent Swarm image were removed after individual checks.
+The subsequent requested cleanup removed two obsolete Bun images, Cabinet's
+Node base, the temporary Alpine audit helper and 139 attributed build-cache
+records (20.01 GB reported by Docker). Model images/caches were preserved.
 
 The original filesystem inventory below concerns the machine used for the
 trials. Approximate filesystem sizes are from November 14, 2026;
