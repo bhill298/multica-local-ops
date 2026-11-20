@@ -1,5 +1,9 @@
 # Ubuntu guest release
 
+Run `./install.ps1 -HyperV` on the Windows host. For sizing overrides or
+already downloaded Ubuntu media use `./install-vm.ps1 -SourceIso <path>`.
+The first install uses Docker Desktop to remaster the verified ISO. After setup,
+Docker Engine, the API, database and workers run inside the VM at Windows boot.
 `release.json` selects the Ubuntu Server amd64 installation image for new VMs.
 Use the SHA-256 before attaching the ISO. To update a point release, update the
 image URL and digest together from Canonical's signed release checksums.

@@ -3,4 +3,6 @@ cifs-utils
 docker.io
 docker-cli
 docker-compose-v2
+linux-cloud-tools-virtual
+samba
 unattended-upgrades

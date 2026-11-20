@@ -1,10 +1,16 @@
 #Requires -Version 7.2
 param(
+    [switch]$HyperV,
     [Parameter(Mandatory)][string]$Title,
     [Parameter(Mandatory)][string]$OutcomeFile,
     [string]$ProjectId,
     [string]$Root = (Join-Path $env:USERPROFILE '.multica/local-ops')
 )
+if ($HyperV) {
+    $request=@{title=$Title;outcome=(Get-Content -LiteralPath $OutcomeFile -Raw);project=$ProjectId}
+    & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Action Goal -Goal $request
+    return
+}
 . (Join-Path $PSScriptRoot 'scripts/common.ps1')
 $context = Read-Installation $Root
 $wid = $context.State.workspace_id

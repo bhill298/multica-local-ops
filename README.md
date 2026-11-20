@@ -12,9 +12,10 @@ artifacts. It does not include the old approval broker or its source patches.
 
 ## Install
 
-For the Hyper-V deployment under development, see the [Ubuntu guest release and
-upgrade workflow](linux-guest/README.md) and [Linux worker tools and project
-mounts](linux-worker/README.md). The installer below is for native Windows workers.
+For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
+and follow the [VM operating guide](hyperv/README.md). See the [Ubuntu upgrade
+workflow](linux-guest/README.md) and [worker tools](linux-worker/README.md).
+The installer below is for native Windows workers.
 
 Start with these installed:
 
