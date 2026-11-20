@@ -2,6 +2,15 @@
 
 ## After moving to the Hyper-V VM
 
+The native retirement described below was completed on November 20, 2026.
+The maintained checkout was moved out of the temporary directory. The native
+database dump, uploads, earlier backups, profile, workspace files, and retained
+trial evidence were consolidated in a private directory outside the repository.
+The native supervisor task, host daemon, Docker Desktop deployment and its
+data volumes were removed. The VM dashboard and Windows project drive passed
+their post-cleanup checks. The inventory and sequence below record what was
+retired and how to reproduce that transition on another installation.
+
 The November 20 post-reboot inventory found **two independent deployments**.
 The VM owns the current dashboard on Windows loopback port 43130 through SSH.
 Docker Desktop still served the old native API on 43131. The old Windows
