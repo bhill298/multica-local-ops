@@ -1,0 +1,6 @@
+{
+  "series": "26.04",
+  "codename": "resolute",
+  "amd64ServerIso": "https://releases.ubuntu.com/26.04/ubuntu-26.04.1-live-server-amd64.iso",
+  "sha256": "cc8a95cde20f6ced61a322420de00f10cc3c90ced545daa46cb9c1a117f1d927"
+}

@@ -12,6 +12,10 @@ artifacts. It does not include the old approval broker or its source patches.
 
 ## Install
 
+For the Hyper-V deployment under development, see the [Ubuntu guest release and
+upgrade workflow](linux-guest/README.md) and [Linux worker tools and project
+mounts](linux-worker/README.md). The installer below is for native Windows workers.
+
 Start with these installed:
 
 - Windows, PowerShell 7.2 or later, Git and Go 1.24 or later. Go's toolchain

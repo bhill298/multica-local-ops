@@ -1,0 +1,23 @@
+# Base service for a project worker. The bind sources are Linux guest paths.
+services:
+  worker:
+    build: .
+    image: multica-local/worker-tools:bookworm
+    init: true
+    security_opt:
+      - seccomp=./browser-seccomp.json
+    shm_size: 512m
+    volumes:
+      - type: bind
+        source: ${PROJECT_INPUT:?Set the absolute guest path for project input}
+        target: /project/input
+        read_only: true
+        bind:
+          create_host_path: false
+          propagation: rprivate
+      - type: bind
+        source: ${PROJECT_EXCHANGE:?Set the absolute guest path for project exchange}
+        target: /project/exchange
+        bind:
+          create_host_path: false
+          propagation: rprivate

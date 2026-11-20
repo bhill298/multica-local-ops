@@ -1,0 +1,6 @@
+ca-certificates
+cifs-utils
+docker.io
+docker-cli
+docker-compose-v2
+unattended-upgrades
