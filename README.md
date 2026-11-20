@@ -168,6 +168,8 @@ native Codex sandbox. Do not treat it as a working in-worker browser integration
 - [Operating notes](docs/operating-notes.md): permissions, recovery, cost reporting,
   worktrees, browser automation and provider coverage in plain English.
 - [Cleanup guide](docs/cleanup.md): what to keep and what previous tests left outside `tmp`.
+- [Docker recovery and inventory](docs/docker-recovery-2026-11-20.md): the current
+  three-container setup, identified leftovers and November 20 backup restoration.
 - [Adding tools](docs/tools.md): per-agent MCP configuration and the existing Office fixture.
 - [Testing guide](docs/testing-guide.md): repeatable checks, fixtures and evidence limits.
 - [Historical notes](docs/history/README.md): 29 preserved comparison, setup and test reports.

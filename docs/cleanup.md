@@ -1,8 +1,15 @@
 # Cleanup outside the temporary workspace
 
-This inventory concerns the machine used for the trials. No old user files were
-deleted as part of preparing this package. Approximate sizes are logical file
-sizes from November 14, 2026; compressed/physical disk usage can differ.
+The current Docker inventory and approved live restoration are recorded in
+[the November 20 recovery report](docker-recovery-2026-11-20.md). Only three
+Multica containers, its two named data volumes and two unrelated model-cache
+volumes remain. Nine empty anonymous volumes, two unused trial networks and an
+obsolete Agent Swarm image were removed after individual checks.
+
+The original filesystem inventory below concerns the machine used for the
+trials. Approximate filesystem sizes are from November 14, 2026;
+compressed/physical disk usage can differ. The November 20 cleanup did not
+delete Windows project files or provider logins.
 
 ## Keep for the active Multica setup
 
@@ -45,7 +52,12 @@ the selected `local-ops` and `stock-runtime` paths. Do not remove the entire
 `.multica` directory. Provider homes inside old run directories can contain
 isolated login material; treat retained archives as private.
 
-## Docker trial data
+## Historical Docker trial inventory (superseded November 20)
+
+The following describes the earlier inventory, not resources still present.
+The user removed these trial containers and named volumes. That cleanup also
+removed the live Multica data volumes, which were restored from the approved
+November 14 backup. Later database changes are absent from the restored snapshot.
 
 The inventory found 113 volumes beginning `orchestration-trial-agent-swarm_`,
 plus `orchestration-swarm213-dev`. If Swarm testing is finished, stop/remove only
@@ -59,9 +71,9 @@ Three Cabinet trial volumes were also present:
 `orchestration-trial-cabinet_data`. They can be retired if Cabinet is abandoned.
 Inspect dependencies and preserve any wanted data before removal.
 
-Do not run a blanket `docker system prune --volumes`. Unrelated model caches,
-including Qwen/vLLM volumes, are present. Anonymous volumes were not classified
-by this inventory and are not being recommended for deletion.
+Do not run a blanket `docker system prune --volumes`. Unrelated Qwen/vLLM model
+caches are present. The earlier inventory did not classify anonymous volumes;
+the November 20 check found nine empty ones and removed them after rechecking.
 
 The package's own disposable test stack is separate from the main deployment.
 Its `multica-package-smoke_*` resources and temporary CLI profile are removed
