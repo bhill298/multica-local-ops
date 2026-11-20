@@ -5,6 +5,57 @@ deployment. "Stock" means unchanged Multica source and pinned server images.
 "Native Windows" means a provider runs on Windows rather than in WSL2 or a
 container. Provider permissions differ even when they share the same Multica UI.
 
+## What protects against destructive or hostile agents?
+
+Multica is an orchestrator, not the machine's security boundary. The model asks
+for actions; the local provider process performs them. By default that process
+has the daemon user's authority. Our daily Codex configuration narrows writes,
+but it does not establish confidential-file isolation or an outbound-data policy.
+An agent can still damage files inside its writable project, and readable
+secrets could be sent over the network or included in model context.
+
+The backend and browser running in Docker do not contain the native Windows
+workers. Likewise, delegation rules, review agents, budgets, logs and the
+restart supervisor do not prevent a hostile worker from exercising permissions
+it already has. Model compliance and reliable workflow behavior are different
+from protection against a malicious or compromised run.
+
+For a stronger boundary, run the **daemon and workers** under a restricted
+account, in a carefully mounted container, or in a VM. Give that environment
+only the project files and narrowly scoped credentials it needs; constrain
+network access separately. WSL2 by itself is not isolation from Windows files
+and programs. Host mounts, interoperability and privileged helper tools need
+their own restrictions. None of those stronger deployments was configured or
+validated here. Desktop/Office integration would need a deliberately limited
+host service rather than exposing arbitrary host commands.
+
+This matches upstream's [security model](https://github.com/multica-ai/multica/blob/dbdbb299164347586e2650bb67684a490726a798/apps/docs/content/docs/security-model.mdx).
+The tested provider-specific differences follow below.
+
+## Can plugins supply the missing boundary?
+
+Stock Multica has plugins: actions, callable hooks, event/schedule hooks,
+resources and UI contributions. The [plugin contract](https://github.com/multica-ai/multica/blob/dbdbb299164347586e2650bb67684a490726a798/packages/core/types/plugin.ts)
+does not expose a universal gate intercepting every provider shell command,
+file operation or network request. That conclusion follows from the reviewed
+contract and the provider execution model; no security plugin was installed or
+tested in this setup.
+
+A plugin or MCP service can enforce rules on operations it owns. Upstream's
+[Deploy Sentinel example](https://github.com/multica-ai/multica/blob/dbdbb299164347586e2650bb67684a490726a798/examples/plugins/deploy-sentinel/README.md)
+refuses certain rollback requests and requires administrator approval of
+external MCP tool schemas. Those controls do not constrain an unrelated command
+the worker can already execute. Event notifications also cannot undo a deletion
+or data transfer that has happened.
+
+Such services become useful security boundaries when the worker lacks the
+underlying privilege: keep a deployment credential in a separate bounded
+service, expose only approved deployment actions, and prevent the worker from
+reading that credential or reaching an alternative privileged path. Adding a
+plugin while leaving the same credential and unrestricted host access available
+to the worker does not accomplish that. This would be additional integration
+and boundary testing, not a protection already supplied by this installation.
+
 ## Codex: the daily team
 
 The six installed daily agents use Codex. The configured defaults are:
