@@ -53,6 +53,32 @@ on the repo baseline. Use the recorded release tag to reproduce an upgrade.
 Depending on the release, a change to upstream configuration or to an adapter
 can still require changes here.
 
+## Live upgrade test, November 20, 2026
+
+The updater took an installed v0.7.0 VM to v0.11.1 (commit
+`e1fe10d6694848e35dd1aa00e08cd11d93e545ac`). The existing workspace, team IDs
+and issue history survived. The three worker binaries contained the release
+commit. Claude Haiku and Gemini 3.8 Flash completed file-writing tasks, and
+the Codex lead delegated a writer and independent review. The worker also
+passed the browser, document, read-only input and writable exchange checks.
+Both Windows network canaries passed. The separate admin database migrated
+in prepare mode while the privileged daemon stayed stopped.
+
+A guest reboot interrupted the writer. The team recovered and closed the goal
+with 52 verified records, ten written after reboot. The first twelve matched
+the prefix saved on Windows. The reboot also changed the guest IP while
+Windows stayed signed in. A second guest reboot tested the host address
+refresh fix: Windows picked up another new address, reopened the dashboard,
+and read the worker output from the original Explorer drive letter without
+manual reconnection. The earlier v0.7.0 pilot covers a physical Windows reboot.
+
+The pre-upgrade export passed virtual disk validation and its Ubuntu disk
+booted through a disposable differencing disk with no network adapter. After
+a new managed checkpoint succeeded, the updater cleared the upgrade
+checkpoint and export. Four managed checkpoints remained. Verification also
+checked that the probe VM, superseded image references and synthetic project
+files were gone. Test issues remained in Multica as history.
+
 ## Changes worth trying after v0.7.0
 
 * **Unattended recovery.** v0.8.0 adds retries for tasks interrupted during

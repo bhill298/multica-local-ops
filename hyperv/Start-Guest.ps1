@@ -41,18 +41,4 @@ if ($stamp -ne $last -or !$nic.SwitchName) {
 }
 if ($PolicyOnly) { return }
 if ((Get-VM -Id $VMId).State -eq 'Off') { Start-VM -VM $vm }
-$deadline=[datetime]::UtcNow.AddMinutes(8)
-do {
-    $nic=Get-VMNetworkAdapter -VM $vm
-    $ip=$nic.IPAddresses | Where-Object { $_ -match '^\d+\.' } | Select-Object -First 1
-    if (!$ip) {
-        $ip=(Get-NetNeighbor -InterfaceAlias $alias -AddressFamily IPv4 |
-            Where-Object { ($_.LinkLayerAddress -replace '-','') -eq $nic.MacAddress } | Select-Object -First 1).IPAddress
-    }
-    if ($ip) { break }
-    Start-Sleep 3
-} while ([datetime]::UtcNow -lt $deadline)
-if (!$ip) { throw 'Guest address discovery timed out.' }
-$tmp="$root/vm-$PID.tmp"
-@{id=$VMId.ToString();phase='installed';address=$ip} | ConvertTo-Json | Set-Content $tmp
-[IO.File]::Replace($tmp,"$root/vm.json","$root/vm.previous.json")
+& "$root/Sync-GuestAddress.ps1" -VMId $VMId -WaitForAddress

@@ -84,8 +84,13 @@ behavior. Stop an admin session before making routine recovery checkpoints.
 
 ## Boot, isolation and recovery
 
-Host Task Scheduler contains **Multica-Ubuntu unattended boot** and **Multica-Ubuntu
-managed checkpoints**. The boot script refreshes guest adapter rules before
+Host Task Scheduler contains **Multica-Ubuntu unattended boot**, **Multica-Ubuntu
+address refresh** and **Multica-Ubuntu managed checkpoints**. Every two minutes
+the refresh task checks the address of the running guest. If DHCP assigns a
+new lease while Windows is still signed in, it updates the host's VM record
+and triggers the existing project-drive task. It also restarts a disconnected
+dashboard relay. A stopped or saved VM stays in that state.
+The boot script refreshes guest adapter rules before
 starting the VM. It blocks private IPv4 ranges, host directly connected
 networks and IPv6, allows needed DHCP/DNS and host-initiated SSH/SMB, and lets
 workers use the public IPv4 internet. Add destination CIDRs to

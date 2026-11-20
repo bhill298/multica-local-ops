@@ -36,6 +36,7 @@ if (!$vm) {
 }
 $state=Get-Content $stateFile -Raw | ConvertFrom-Json
 Copy-Item "$PSScriptRoot/Start-Guest.ps1" "$root/Start-Guest.ps1" -Force
+Copy-Item "$PSScriptRoot/Sync-GuestAddress.ps1" "$root/Sync-GuestAddress.ps1" -Force
 if (!(Test-Path "$root/network.json") -or $PSBoundParameters.ContainsKey('AdditionalBlockedNetworks')) {
     @{additionalBlockedNetworks=@($AdditionalBlockedNetworks)} | ConvertTo-Json | Set-Content "$root/network.json"
 }
@@ -72,3 +73,6 @@ Register-ScheduledTask -TaskName "$Name managed checkpoints" -Action $action -Tr
 $bootAction=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -VMId {1}' -f "$root/Start-Guest.ps1",$vm.Id)
 Register-ScheduledTask -TaskName "$Name unattended boot" -Action $bootAction -Trigger (New-ScheduledTaskTrigger -AtStartup) -User SYSTEM -RunLevel Highest -Settings (New-ScheduledTaskSettingsSet -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable -MultipleInstances IgnoreNew) -Force | Out-Null
 & "$root/Start-Guest.ps1" -VMId $vm.Id
+$syncAction=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -VMId {1}' -f "$root/Sync-GuestAddress.ps1",$vm.Id)
+$syncTrigger=New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10) -RepetitionInterval (New-TimeSpan -Minutes 2)
+Register-ScheduledTask -TaskName "$Name address refresh" -Action $syncAction -Trigger $syncTrigger -User SYSTEM -RunLevel Highest -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries) -Force | Out-Null
