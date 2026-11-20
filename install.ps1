@@ -128,7 +128,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'compose.yml') -Destination (Join-Path $Root 'compose.yml') -Force
     Copy-Item -LiteralPath $SettingsFile -Destination (Join-Path $Root 'settings.json') -Force
     New-Item -ItemType Directory -Force -Path (Join-Path $Root 'scripts') | Out-Null
-    foreach ($file in @('manage.ps1','new-goal.ps1','scripts/common.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $Root $file) -Force }
+    foreach ($file in @('manage.ps1','new-goal.ps1','compact-docker-disk.ps1','scripts/common.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $Root $file) -Force }
     foreach ($file in @('coordination-local.txt','config/roles.json')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $Root ('assets/'+[IO.Path]::GetFileName($file))) -Force }
     foreach ($name in @('multica.exe','supervisor.exe')) { Copy-Item -LiteralPath (Join-Path $build $name) -Destination (Join-Path $BinRoot $name) -Force }
     foreach ($volume in @($values.PG_VOLUME,$values.UPLOADS_VOLUME)) { $null = Invoke-Hidden docker @('volume','create',$volume) }

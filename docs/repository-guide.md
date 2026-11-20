@@ -18,6 +18,7 @@ package, not an offline image or a backup of the live workspace database.
 | [Historical reports](history/README.md) | 29 preserved evaluation, setup, test and intervention notes with current-report precedence |
 | [Cleanup](cleanup.md) | Active files to keep and old test artifacts that can be retired after review |
 | [Docker cleanup and recovery](docker-recovery-2026-11-20.md) | Current three-container/two-volume stack, identified hashes, removed leftovers and approved backup restoration |
+| [Docker disk maintenance](disk-maintenance.md) | Standalone compaction helper, optional Multica handling, preflight and failure recovery |
 | [Coordination contract](../coordination-local.txt) | Delegation, actual-run tracking, corrections, review, acceptance, root timers and project binding |
 | [Settings](../config/settings.json) and [roles](../config/roles.json) | Version/image pins, local defaults, selected models and the six-agent team |
 

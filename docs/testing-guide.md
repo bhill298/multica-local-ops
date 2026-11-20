@@ -12,6 +12,7 @@ superseded by the current findings.
 go test ./...
 go vet ./...
 pwsh -NoProfile -File ./tests/installer.tests.ps1
+pwsh -NoProfile -File ./tests/disk-maintenance.tests.ps1
 node --test ./tests/office-fixture.test.mjs
 ```
 

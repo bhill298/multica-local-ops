@@ -170,6 +170,8 @@ native Codex sandbox. Do not treat it as a working in-worker browser integration
 - [Cleanup guide](docs/cleanup.md): what to keep and what previous tests left outside `tmp`.
 - [Docker recovery and inventory](docs/docker-recovery-2026-11-20.md): the current
   three-container setup, identified leftovers and November 20 backup restoration.
+- [Docker disk maintenance](docs/disk-maintenance.md): checked trim/compaction,
+  failure recovery and automatic operation with or without Multica.
 - [Adding tools](docs/tools.md): per-agent MCP configuration and the existing Office fixture.
 - [Testing guide](docs/testing-guide.md): repeatable checks, fixtures and evidence limits.
 - [Historical notes](docs/history/README.md): 29 preserved comparison, setup and test reports.
@@ -179,6 +181,7 @@ go test ./...
 go vet ./...
 node --test ./tests/office-fixture.test.mjs
 pwsh -NoProfile -File .\tests\installer.tests.ps1 -Docker
+pwsh -NoProfile -File .\tests\disk-maintenance.tests.ps1
 ```
 
 CI checks this repository's code on Windows. It does not certify the full upstream

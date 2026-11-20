@@ -18,3 +18,5 @@ jobs:
       - run: node --test ./tests/office-fixture.test.mjs
       - shell: pwsh
         run: ./tests/installer.tests.ps1
+      - shell: pwsh
+        run: ./tests/disk-maintenance.tests.ps1
