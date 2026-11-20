@@ -1,9 +1,9 @@
 # Linux worker tools and project folders
 
-This is the tools layer for the proposed Ubuntu Hyper-V deployment. It can also
-run as a standalone toolbox on a Linux Docker engine. The Debian userspace in
-the container works on an Ubuntu guest. The Windows installer does not yet
-provision the VM, host shares, or Linux Multica daemon and provider CLIs.
+This is the shared Debian tools layer for the three worker images in the Ubuntu
+VM. The [VM installer](../hyperv/README.md) builds the provider images and
+exposes guest-owned input and exchange folders to Windows. The standalone
+Compose example below is also available for a Linux Docker engine.
 
 The image includes C/C++, CMake, Ninja, Git, Python (including venv), distro
 Node.js/npm, SQLite, jq and ripgrep. For binary inspection use file, strings,

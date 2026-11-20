@@ -12,7 +12,7 @@ Existing guests receive point-release package changes through normal apt updates
 During guest setup run `sudo bash setup-packages.sh --install`. It reads the
 package list for the installed Ubuntu codename, refreshes apt, and checks that
 the whole transaction resolves before installing. Use `--check` for validation.
-These files supply guest prerequisites for the planned VM installer. The Docker
+The VM installer invokes this step automatically. The Docker
 worker image and its separate package choices are under [linux-worker](../linux-worker/README.md).
 
 For a newer Ubuntu series, add its codename list beside the existing one and

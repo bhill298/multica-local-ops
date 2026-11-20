@@ -1,9 +1,8 @@
 # Local Multica on Windows
 
-Install the tested stock Multica setup with a local browser interface, native
-Windows Codex workers and a small supervisor that restarts the daemon. Multica's
-source stays unchanged. The configuration supports a lead, project leads and
-workers across separate coding, research, writing and planning projects.
+The recommended installation runs stock Multica and its Codex, Claude and Agy
+workers in an Ubuntu Hyper-V VM. You use the dashboard and project drive from
+Windows. The repository also preserves the earlier native Windows installer.
 
 This repository contains the installer, supervisor source, team settings and
 coordination instructions. It includes summarized test findings and limitations.

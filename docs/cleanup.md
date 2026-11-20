@@ -1,5 +1,64 @@
 # Cleanup outside the temporary workspace
 
+## After moving to the Hyper-V VM
+
+The November 20 post-reboot inventory found **two independent deployments**.
+The VM owns the current dashboard on Windows loopback port 43130 through SSH.
+Docker Desktop still served the old native API on 43131. The old Windows
+daemon was running with zero active tasks. Its default workspace had six idle
+agents; the old database also contained one unarchived lab agent and 61
+archived agents. The VM uses its own database and provider homes.
+
+**Keep the current installation:** the `Multica-Ubuntu` VM, its virtual disks
+and checkpoints, its unattended boot/checkpoint/dashboard relay/project drive
+tasks, `%ProgramFiles%\MulticaVM\Multica-Ubuntu` and the operator keys,
+known_hosts, drive record and relay under `%LOCALAPPDATA%\MulticaVM`.
+The guest's six running `multica-vm-*` containers and three stopped
+`multica-owner-only-*` containers belong to the current design. The five
+completed VM pilot issues are history in the new database. Treat the project
+drive as live guest data. Keep shared provider tools and Windows logins.
+
+**Retire the native installation in this order:**
+
+1. From this repo in PowerShell 7, with Docker on the `desktop-linux` context,
+   run `./manage.ps1 -Action Status`. Confirm the native runtime root and no
+   active work. Its printed dashboard URL is configured metadata; the SSH
+   relay now owns that port. Use `./manage.ps1 -Action Backup` if keeping
+   the native database/history and uploads. Save that backup privately outside
+   the directories being retired, and preserve any local-only project files.
+2. Run `./manage.ps1 -Action Stop`. This disables **Multica Local Supervisor**,
+   stops the native daemon, and stops only the native Compose project. Leave
+   the stopped containers and volumes in place for an initial rollback window.
+   Verify the VM dashboard, project drive and `-Action Status` through
+   `hyperv/Connect-Guest.ps1` still work.
+3. Once rollback is unnecessary, remove the disabled native task, the three
+   Docker Desktop containers and network for project `orchestration-trial-multica`.
+   Its external volumes `orchestration-trial-multica_pgdata` and
+   `orchestration-trial-multica_backend_uploads` require separate removal.
+   That discards the old database and uploaded files. There is no need to
+   archive or delete old agent records individually.
+4. Retire `~/.multica/stock-runtime`, `~/.multica/local-ops` (including its
+   private backups and .env), `~/.multica/profiles/orchestration-trial-20261024`,
+   `~/.multica/workspaces-local` and `~/.multica/daemon.id` after checking
+   for any other native Multica use. The old fork directories
+   `local-runtime` and `local-reliability` were already absent at this check.
+
+**Disposable test files:** after saving this Git repo outside `tmp` or pushing
+it, retire individually reviewed Multica trial folders, worker-smoke fixtures
+and the VM pilot download/prefix directory. Check projects for local-only
+results first. The two `installer.iso` files in `%LOCALAPPDATA%\MulticaVM\media`
+and `media-v2` are rebuildable after installation and account for about
+5.45 GiB together. The adjacent operator keys are needed for ongoing access.
+Host Docker images tagged `multica-local/iso-builder:26.04`,
+`multica-local/worker-tools:bookworm` and `multica-local/codex:vm` are
+rebuildable host caches. The guest has separate images. Preserve unrelated
+Docker volumes, images and WSL distributions.
+
+## Historical native-install inventory
+
+The remaining inventory describes the native trials. References below to
+“active” or “keep” refer to preserving that earlier installation for rollback.
+
 The current Docker inventory and approved live restoration are recorded in
 [the November 20 recovery report](docker-recovery-2026-11-20.md). Only three
 Multica containers, its two named data volumes and two unrelated model-cache

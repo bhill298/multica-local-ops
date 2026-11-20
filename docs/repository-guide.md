@@ -6,6 +6,11 @@ package, not an offline image or a backup of the live workspace database.
 
 ## Documentation map
 
+Start with the [VM operating guide](../hyperv/README.md) for the current
+deployment, including the physical reboot result and Explorer drive fix.
+The native Windows supervisor, host permission tests and native adoption
+instructions below document the earlier deployment.
+
 | File | What it covers |
 | --- | --- |
 | [README](../README.md) | Prerequisites, installation, local browser login, starting goals, management and adoption |

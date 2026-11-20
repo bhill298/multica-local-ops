@@ -5,6 +5,13 @@ later. Windows needs Hyper-V, virtualization enabled in firmware, Windows
 OpenSSH client, curl, tar, and a running Linux Docker Desktop engine for
 building the install media. Allow the Windows elevation prompt. The VM uses
 Ubuntu Server 26.04.1 amd64, Generation 2, Secure Boot, and Dynamic Memory.
+Git preserves the setup and test procedures. A fresh install needs internet
+access to download the Ubuntu ISO, apt packages, Docker images, upstream
+Multica source and provider tools. The Ubuntu ISO checksum, Multica commit,
+service image digests and Codex/Claude CLI versions are pinned. Base image
+tags, distro packages and Agy's installer can change. A new install creates
+new accounts within the local deployment, local keys and an empty workspace;
+provider subscription sign-ins are interactive. Back up live work separately.
 Use `install-vm.ps1 -SourceIso <file>` to reuse verified installation media.
 Pass `-Processors`, `-MaximumGiB`, `-DiskGiB`, `-Keep` or `-SkipProjectDrive`
 to override the host-size defaults, growable disk, checkpoint retention, or
