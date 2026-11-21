@@ -10,6 +10,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     ripgrep sqlite3 sudo unzip xauth xdotool xterm xvfb zip \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    qemu-system-x86 qemu-utils && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --shell /bin/bash worker \
     && echo 'worker ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/worker \
     && chmod 0440 /etc/sudoers.d/worker \

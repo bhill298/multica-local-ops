@@ -23,6 +23,11 @@ The default user can use sudo inside the container. Install additional packages
 there for an individual run, or extend the image for repeatable installations.
 Use a provider-supported language runtime when adding the provider CLI layer.
 
+For hardware-accelerated x86 VMs, use `qemu-system-x86_64 -accel kvm`.
+The Hyper-V deployment supplies the device and its group when enabled.
+The standalone Compose example omits the device by default. Use `-nic none`
+when an inner VM does not need networking.
+
 ## Project mounts
 
 For host-backed folders, give the VM's exchange identity Windows share **and**

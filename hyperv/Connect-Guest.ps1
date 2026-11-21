@@ -25,7 +25,10 @@ switch ($Action) {
             $root=Split-Path $PSScriptRoot
             tar -cf $archive -C $root hyperv linux-worker linux-guest config/settings.json config/roles.json coordination-local.txt
             scp @opts $archive "${target}:setup.tar"
-            ssh @opts $target 'set -eu; sudo install -d -m 755 /opt/multica-local; sudo tar -xf setup.tar --no-same-owner -C /opt/multica-local; rm setup.tar; sudo bash /opt/multica-local/linux-guest/setup-packages.sh --install; sudo systemctl enable --now docker; sudo python3 /opt/multica-local/hyperv/guest.py'
+            $policy="$env:ProgramFiles/MulticaVM/$Name/kvm.json"
+            $kvm='off'
+            if ((Test-Path $policy) -and (Get-Content $policy -Raw | ConvertFrom-Json).enabled) { $kvm='on' }
+            ssh @opts $target "set -eu; sudo install -d -m 755 /opt/multica-local; sudo tar -xf setup.tar --no-same-owner -C /opt/multica-local; rm setup.tar; sudo bash /opt/multica-local/linux-guest/setup-packages.sh --install; sudo systemctl enable --now docker; sudo python3 /opt/multica-local/hyperv/guest.py --kvm $kvm"
         } finally { if (Test-Path $archive) { Remove-Item -LiteralPath $archive } }
     }
     Status { ssh @opts $target "$compose ps" }

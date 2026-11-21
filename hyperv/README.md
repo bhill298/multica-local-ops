@@ -5,6 +5,13 @@ later. Windows needs Hyper-V, virtualization enabled in firmware, Windows
 OpenSSH client, curl, tar, and a running Linux Docker Desktop engine for
 building the install media. Allow the Windows elevation prompt. The VM uses
 Ubuntu Server 26.04.1 amd64, Generation 2, Secure Boot, and Dynamic Memory.
+New VMs expose the CPU's virtualization extensions to Ubuntu. The three
+provider workers get QEMU and access to Ubuntu's KVM device. For a host
+without nested virtualization support, or to omit device access, run
+`./install-vm.ps1 -NestedVirtualization Off`. An existing VM keeps its CPU
+setting when you omit this option. To change it, finish active jobs, shut
+down the VM and rerun the installer with `-NestedVirtualization On` or
+`Off`. Provisioning rebuilds the workers and reconciles their device mappings.
 Git preserves the setup and test procedures. A fresh install needs internet
 access to download the Ubuntu ISO, apt packages, Docker images, upstream
 Multica source and provider tools. The Ubuntu ISO checksum, Multica commit,
@@ -141,3 +148,39 @@ was unavailable after sign-in. The new logon task was exercised against
 that actual stale mapping and restored the same drive letter. A worker-created
 file and the checkpoint prefix were both read through the repaired drive.
 The drive fix was tested by invoking the registered logon task after this boot.
+
+## KVM and Dynamic Memory
+
+On the tested Ryzen 9 9950X3D host, Hyper-V accepted nesting with 4 GiB
+startup, 2 GiB minimum and 62 GiB maximum RAM. We touched 3 GiB in a worker
+in each run and measured physical RAM assigned to the Ubuntu VM on Windows.
+
+| Test | Before load | Highest observed |
+|---|---:|---:|
+| Extensions off | 3,233 MiB | 7,182 MiB |
+| Inner Linux VM running with KVM | 4,096 MiB | 7,756 MiB |
+
+After releasing the second allocation, Hyper-V reduced assigned RAM to
+4,374 MiB while the inner guest continued sending heartbeats. QEMU reported
+KVM enabled. The inner guest had 512 MiB, one vCPU and no network adapter.
+These measurements demonstrate growth and reclamation on this host. Other
+processors, kernels or Hyper-V versions need their own check. Microsoft
+describes Linux hypervisors nested inside Hyper-V as unsupported.
+[Hyper-V nested virtualization](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/nested-virtualization)
+
+Hyper-V created a production checkpoint while the inner guest was running.
+We removed the test checkpoint without restoring it. After restarting Ubuntu,
+each of the three installed workers booted the same small Linux guest as UID
+1000. In each case QEMU reported active KVM acceleration and the inner guest
+sent a heartbeat from userspace. All three Multica runtimes came back online,
+Windows could reach the dashboard, and the project drive was accessible.
+This run restarted Ubuntu only. The Windows reboot test above predates KVM.
+
+The installer maps only `/dev/kvm:rw` into Codex, Claude and Agy and adds the
+device's Ubuntu group ID as a supplementary group. They can start QEMU as the
+ordinary worker user. KVM access adds an interface to the Ubuntu kernel and
+allows workers to exercise nested CPU virtualization. A vulnerability there
+could compromise the guest, including other workers' secrets. The Windows
+hypervisor also has more guest-controlled CPU state to handle. File mounts,
+network rules, container privilege settings and Docker engine access remain
+independent controls. The database, API and dashboard receive no KVM mapping.

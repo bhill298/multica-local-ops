@@ -1,5 +1,6 @@
 """Install the private Multica control plane and provider-specific daemons in Ubuntu."""
 import json
+import argparse
 import os
 from pathlib import Path
 import secrets
@@ -49,7 +50,25 @@ def credentials():
     return json.loads(path.read_text())
 
 
-def render(creds):
+def kvm_group():
+    import fcntl
+
+    # The device group on the Ubuntu guest can differ from Debian's kvm group.
+    cpu = Path("/proc/cpuinfo").read_text()
+    driver = "kvm_amd" if "AuthenticAMD" in cpu else "kvm_intel"
+    run("modprobe", driver)
+    run("udevadm", "settle", "--timeout=15")
+    device = Path("/dev/kvm")
+    if not device.is_char_device():
+        raise RuntimeError("Hyper-V nesting was requested but Ubuntu has no /dev/kvm. Check the host settings.")
+    with device.open("rb+", buffering=0) as fd:
+        if fcntl.ioctl(fd, 0xAE00) != 12:  # KVM_GET_API_VERSION
+            raise RuntimeError("Unexpected KVM API version")
+    Path("/etc/modules-load.d/multica-kvm.conf").write_text(driver + "\n")
+    return str(device.stat().st_gid)
+
+
+def render(creds, kvm_gid=None):
     images = SETTINGS["images"]
     database = {"image": images["postgres"], "environment": {"POSTGRES_DB": "multica",
                 "POSTGRES_USER": "multica", "POSTGRES_PASSWORD": creds["password"]},
@@ -82,6 +101,9 @@ def render(creds):
             "MULTICA_CODEX_ARGS":'-c approval_policy="never" -c sandbox_mode="danger-full-access"',
             "MULTICA_ANTIGRAVITY_MODEL":"gemini-3.8-flash-low"},
             "entrypoint":["/bin/sh","-ec","while [ ! -e /home/worker/.multica/enrolled ]; do sleep 2; done; exec multica daemon start --foreground --no-auto-update --no-auto-reload"]}
+        if kvm_gid is not None:
+            services[provider]["devices"] = ["/dev/kvm:/dev/kvm:rw"]
+            services[provider]["group_add"] = [kvm_gid]
     for service in services.values():
         service["restart"]="unless-stopped"
     networks={key:{} for key in ["web",*PROVIDERS]}
@@ -159,7 +181,7 @@ def create_team(workspace):
     (STATE/"team.json").write_text(json.dumps(team))
 
 
-def provision():
+def provision(kvm=False):
     os.umask(0o077)
     STATE.mkdir(mode=0o700,exist_ok=True)
     creds=credentials()
@@ -178,7 +200,10 @@ def provision():
             os.chown(folder,1000,1000)
             folder.chmod(0o755 if name=="input" else 0o775)
     configure_share(STATE)
-    (STATE/"compose.json").write_text(json.dumps(render(creds)))
+    gid = kvm_group() if kvm else None
+    if not kvm:
+        Path("/etc/modules-load.d/multica-kvm.conf").unlink(missing_ok=True)
+    (STATE/"compose.json").write_text(json.dumps(render(creds, gid)))
     dc("up","-d","postgres","backend","frontend")
     run("docker","build","-t","multica-local/worker-tools:bookworm",str(ROOT/"linux-worker"))
     for provider in PROVIDERS:
@@ -192,4 +217,6 @@ def provision():
 
 if __name__=="__main__":
     if os.geteuid()!=0: sys.exit("Run the guest provisioner with sudo.")
-    provision()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--kvm", choices=("on","off"), default="off")
+    provision(kvm=parser.parse_args().kvm == "on")

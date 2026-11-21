@@ -15,6 +15,7 @@ jobs:
           node-version: '22'
       - run: go test ./...
       - run: go vet ./...
+      - run: python -B -m unittest discover -s tests -p "test_*.py"
       - run: node --test ./tests/office-fixture.test.mjs
       - shell: pwsh
         run: ./tests/installer.tests.ps1

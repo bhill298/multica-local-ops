@@ -5,7 +5,8 @@ param([Parameter(Mandatory)][string]$Media,
     [string]$Name='Multica-Ubuntu', [int]$Processors, [int]$MaximumGiB,
     [ValidateRange(40,2048)][int]$DiskGiB=128,
     [ValidateRange(1,52)][int]$Keep=4, [DayOfWeek]$CheckpointDay='Sunday',
-    [datetime]$CheckpointAt='03:00', [string[]]$AdditionalBlockedNetworks=@())
+    [datetime]$CheckpointAt='03:00', [string[]]$AdditionalBlockedNetworks=@(),
+    [ValidateSet('On','Off')][string]$NestedVirtualization)
 $ErrorActionPreference='Stop'
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Use an alphanumeric VM name with optional hyphens.' }
 if (!(Get-Command Get-VM -ErrorAction SilentlyContinue) -or (Get-Service vmms).Status -ne 'Running') { throw 'Enable Hyper-V and its PowerShell management tools, enable virtualization in firmware, then reboot.' }
@@ -35,6 +36,16 @@ if (!$vm) {
     @{id=$vm.Id.ToString();phase='created'} | ConvertTo-Json | Set-Content $stateFile
 }
 $state=Get-Content $stateFile -Raw | ConvertFrom-Json
+$exposed=(Get-VMProcessor -VM $vm).ExposeVirtualizationExtensions
+if ($NestedVirtualization -or $state.phase -eq 'created') {
+    $wanted=$NestedVirtualization -ne 'Off'
+    if ($exposed -ne $wanted) {
+        if ($vm.State -ne 'Off') { throw "Shut down $Name before changing NestedVirtualization. Existing workers may have work in flight." }
+        try { Set-VMProcessor -VM $vm -ExposeVirtualizationExtensions $wanted -ErrorAction Stop }
+        catch { throw "Cannot set nested virtualization on $Name. Check CPU/VM support or use -NestedVirtualization Off. $($_.Exception.Message)" }
+    }
+}
+@{enabled=[bool](Get-VMProcessor -VM $vm).ExposeVirtualizationExtensions} | ConvertTo-Json | Set-Content "$root/kvm.json"
 Copy-Item "$PSScriptRoot/Start-Guest.ps1" "$root/Start-Guest.ps1" -Force
 Copy-Item "$PSScriptRoot/Sync-GuestAddress.ps1" "$root/Sync-GuestAddress.ps1" -Force
 if (!(Test-Path "$root/network.json") -or $PSBoundParameters.ContainsKey('AdditionalBlockedNetworks')) {
@@ -53,7 +64,13 @@ if ($state.phase -eq 'created') {
     if (!$dvd) { $dvd=Add-VMDvdDrive -VM $vm -Path $Media -Passthru } else { Set-VMDvdDrive -VMDvdDrive $dvd -Path $Media }
     Set-VMFirmware -VM $vm -FirstBootDevice $dvd
     $state.phase='installing'; $state | ConvertTo-Json | Set-Content $stateFile
-    Start-VM -VM $vm
+    try { Start-VM -VM $vm -ErrorAction Stop }
+    catch {
+        if ((Get-VM -Id $vm.Id).State -eq 'Off') {
+            $state.phase='created'; $state | ConvertTo-Json | Set-Content $stateFile
+        }
+        throw "Hyper-V could not boot the installer. If this host cannot expose virtualization extensions, retry with -NestedVirtualization Off. $($_.Exception.Message)"
+    }
 }
 if ($state.phase -eq 'installing') {
     $deadline=[datetime]::UtcNow.AddMinutes(60)
