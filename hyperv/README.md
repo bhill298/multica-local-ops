@@ -141,6 +141,12 @@ are `-Action Put -Path <input>`,
 
 ## VM administrator
 
+The installer currently provisions only Codex in the admin workspace. Picking
+Claude or Agy at the provider sign-in prompt connects its daily container.
+There is no installer setting to switch the VM admin agent to either provider.
+The admin dashboard can host another provider once it has its own registered
+runtime in the admin instance.
+
 **VM Admin — Full root access to Ubuntu** is a private, single-task Codex
 agent. It can administer the VM and Docker. Its instructions ask it to inspect
 current state, perform requested changes, verify results and preserve the two
