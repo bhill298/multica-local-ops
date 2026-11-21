@@ -26,6 +26,9 @@ import (
 //go:embed index.html
 var page []byte
 
+//go:embed favicon.ico
+var favicon []byte
+
 type config struct {
 	ManagementAuth                              string
 	Name, Prefix, Directory, Script, PowerShell string
@@ -132,7 +135,7 @@ func (p *portal) handler() http.Handler {
 					http.Redirect(w, r, "http://"+home+"/manage", 302)
 					return
 				}
-				w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+				w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Write(html)
 				return
@@ -140,6 +143,11 @@ func (p *portal) handler() http.Handler {
 			if r.URL.Path == "/portal.js" {
 				w.Header().Set("Content-Type", "text/javascript")
 				w.Write(js)
+				return
+			}
+			if r.URL.Path == "/favicon.ico" {
+				w.Header().Set("Content-Type", "image/x-icon")
+				w.Write(favicon)
 				return
 			}
 		}
