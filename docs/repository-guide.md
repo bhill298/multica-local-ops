@@ -13,8 +13,11 @@ instructions below document the earlier deployment.
 
 | File | What it covers |
 | --- | --- |
+| [VM operating guide](../hyperv/README.md) | Current Hyper-V setup, sizing, ports, browser accounts, operator access, providers, mounts, boot, isolation, recovery and uninstall |
+| [Multica updates](update-multica.md) | Release selection, checkpoints, exports, rollback and the tested upgrade |
+| [Guest release](../linux-guest/README.md) and [worker tools](../linux-worker/README.md) | Ubuntu version changes, package lists and the shared worker image |
 | [README](../README.md) | Prerequisites, installation, local browser login, starting goals, management and adoption |
-| [Test findings](findings.md) | Successful and failed tests, known gaps and the distinction between tests and operating defaults |
+| [Test findings](findings.md) | Native Windows pilot results and limits; the VM guide records the later Hyper-V tests |
 | [Operating notes](operating-notes.md) | Everyday permissions, recovery, worktrees, costs, provider differences and project binding |
 | [Security posture](security-posture.md) | Codex, Agy and Claude boundaries, local authentication and host MCP authority |
 | [Adding tools](tools.md) | Per-agent MCP configuration, provider differences and the existing Office fixture |
@@ -22,10 +25,75 @@ instructions below document the earlier deployment.
 | [Testing guide](testing-guide.md) | Repeatable source/integration checks and preserved fixtures |
 | [Historical reports](history/README.md) | 29 preserved evaluation, setup, test and intervention notes with current-report precedence |
 | [Cleanup](cleanup.md) | Active files to keep and old test artifacts that can be retired after review |
-| [Docker cleanup and recovery](docker-recovery-2026-11-20.md) | Current three-container/two-volume stack, identified hashes, removed leftovers and approved backup restoration |
+| [Docker cleanup and recovery](docker-recovery-2026-11-20.md) | Historical host Docker Desktop inventory, removed leftovers and backup restoration |
 | [Docker disk maintenance](disk-maintenance.md) | Standalone compaction helper, optional Multica handling, preflight and failure recovery |
 | [Coordination contract](../coordination-local.txt) | Delegation, actual-run tracking, corrections, review, acceptance, root timers and project binding |
-| [Settings](../config/settings.json) and [roles](../config/roles.json) | Version/image pins, local defaults, selected models and the six-agent team |
+| [Settings](../config/settings.json) and [roles](../config/roles.json) | Account and model defaults and the six Codex roles. VM provisioning adds Claude and Agy daily agents and a separate admin agent. |
+
+## Dependencies and upstream compatibility
+
+The Windows portal and the earlier native supervisor use the Go standard
+library. The portal uses Go's reverse proxy, embedded HTML and plain
+JavaScript. Its build needs Go locally or in the Docker compiler container.
+Once built, it runs as a Windows executable and invokes PowerShell for
+operations. The guest provisioning scripts use Python's standard library
+and the installed command-line tools. There is no separate portal frontend
+build or Python package installation for these scripts.
+
+The installation itself has substantial dependencies. Windows supplies
+Hyper-V, Task Scheduler and OpenSSH. Docker Desktop builds the Ubuntu
+installation media. Ubuntu runs Docker Engine and Compose, Samba, two
+Multica stacks and the provider runtimes. The three daily workers share a
+Debian image with Chromium, LibreOffice, QEMU and development tools. Those
+packages save repeated setup inside jobs. Their downloads, disk usage and
+updates are part of the cost of running this deployment.
+
+The installer pulls the upstream backend and web images by digest. The
+[worker build](../hyperv/provider.Dockerfile) verifies the checked-out Git
+commit, compiles Multica's CLI and sets its version metadata at link time.
+The local worker images add the provider CLIs and toolbox. Neither the
+installer nor the release updater applies a Multica source patch.
+
+| When something changes | What depends on it |
+| --- | --- |
+| Multica CLI, API or development login | Enrollment, agent creation and status consume specific commands, routes, JSON fields and provider names. Verify both logins, the existing team and a job in each workspace. |
+| Multica database schema | The idle checks read `agent_task_queue` and its terminal status values. The [owner settings SQL](../hyperv/owner-prompt-defaults.sql) writes onboarding and prompt preferences. A migration can affect either even if the dashboards still load. |
+| Release packaging | The updater expects published image tags and digests, the CLI build path and a compatible Go toolchain. It stages the CLI and checks its reported version and commit before activation. |
+| Provider CLIs | Shared sign-in reads specific OAuth cache paths and fields. Admin provider selection also depends on the binaries' locations. Recheck sign-in, copying credentials and an actual model call when updating a provider. |
+| Windows or Ubuntu | Boot, checkpoint, SSH, SMB and network rules depend mainly on the host and guest OS. A new Ubuntu series needs a matching package profile. |
+
+The documented live upgrade went from v0.7.0 to v0.11.1. The blank-disk
+test covered a fresh v0.11.1 install. The newer portal exercised the
+already-current update path. A compatible release should normally go through
+the existing updater; a changed schema, CLI or image layout may require
+a wrapper change. CI checks this repository. It does not install each new
+upstream release into a VM. Keep the upgrade export until the new version
+has completed real work. [Upgrade and restore procedure](update-multica.md)
+
+### Which settings apply?
+
+* For a fresh VM, [initial-release.json](../hyperv/initial-release.json)
+  selects the Multica commit and the backend and web digests. An installed
+  VM uses its guest-side `/var/lib/multica-local/release-pins.json`.
+  The older commit and backend/web digests in `config/settings.json` are the
+  native baseline. The VM also uses that file for the PostgreSQL image,
+  account defaults, models and goal timer.
+* Windows ports live in [dashboard-ports.json](../hyperv/dashboard-ports.json).
+  VM hardware, project drive, portal access and provider options are in the
+  [installation guide](../hyperv/README.md). Some settings initialize new
+  accounts or agents. Use the documented account or provider procedure to
+  change an existing installation.
+* The [Ubuntu ISO selection](../linux-guest/release.json), guest apt list
+  and worker Dockerfiles are maintained separately from Multica. A Multica
+  application update preserves the provider CLIs, tools and PostgreSQL pin.
+  Rebuilding workers can pick up newer distro packages, base image tags and
+  Agy's installer. Codex and Claude CLI versions are pinned in the worker build.
+
+Updating this checkout and updating Multica are separate operations. The
+running Windows portal uses an installed binary and a protected copy of its
+PowerShell helpers. After pulling a portal or web-updater fix, run
+`./hyperv/Install-Portal.ps1` to install those copies. To update Multica
+in the guest, use the portal's update control or `./update-vm.ps1`.
 
 ## What Git preserves
 
@@ -44,10 +112,9 @@ upstream source, images and dependencies; authenticated model calls use the
 provider's service. "Local" describes the orchestration services and data, not
 offline model inference.
 
-Provider CLI versions are separate prerequisites and can update independently.
-The tested versions are recorded in findings; the installer does not reproduce
-every aspect of the original Windows machine or freeze provider subscriptions.
-Repeat relevant boundary checks after a provider update.
+The VM installer builds the provider CLIs into the worker images. The earlier
+native installation used provider CLIs installed on Windows. Provider
+subscriptions and model availability can change independently.
 
 ## What Git deliberately excludes
 
@@ -87,7 +154,7 @@ Individual historical/test projects can still refer to folders there. The old
 disabled supervisor and old fork/broker rollback files are different paths;
 consult cleanup before removing anything.
 
-## Stock setup compared with the old Multica fork
+## Native stock pilot compared with the old Multica fork
 
 | Area | Current behavior |
 | --- | --- |

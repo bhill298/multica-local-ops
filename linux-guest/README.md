@@ -15,7 +15,7 @@ the whole transaction resolves before installing. Use `--check` for validation.
 The VM installer invokes this step automatically. Ubuntu includes Git,
 curl, jq, ripgrep, GCC/G++, Make, CMake, Ninja, binutils, Python with venv,
 SQLite, ZIP tools, Poppler and QEMU. These are available over SSH and to
-the manually started VM administrator. The daily workers have their own
+the VM administrator, which starts automatically with Ubuntu by default. The daily workers have their own
 [toolbox](../linux-worker/README.md), including Chromium, Selenium, Xvfb,
 LibreOffice and Pandoc.
 

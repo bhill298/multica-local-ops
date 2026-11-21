@@ -1,7 +1,10 @@
 # Security posture
 
-This describes the selected local stock installation, not every possible Multica
-deployment. "Stock" means unchanged Multica source and pinned server images.
+This page describes the earlier native Windows pilot. For the current Hyper-V
+deployment, see [worker and project mounts](../hyperv/README.md#workers-and-project-files),
+[VM admin authority](../hyperv/README.md#vm-administrator) and
+[host network isolation](../hyperv/README.md#boot-isolation-and-recovery).
+"Stock" means unchanged Multica source and pinned server images.
 "Native Windows" means a provider runs on Windows rather than in WSL2 or a
 container. Provider permissions differ even when they share the same Multica UI.
 

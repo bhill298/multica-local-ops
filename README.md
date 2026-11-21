@@ -9,6 +9,10 @@ coordination instructions. It includes summarized test findings and limitations.
 It contains no provider credentials, database, session transcripts or old test
 artifacts. It does not include the old approval broker or its source patches.
 
+See [dependencies and upstream compatibility](docs/repository-guide.md#dependencies-and-upstream-compatibility)
+for what we build locally, what comes from upstream, and what to retest
+when a release changes.
+
 ## Install
 
 Already running the Ubuntu VM? Run `./update-vm.ps1` to check for a Multica
@@ -34,7 +38,9 @@ switch the existing agent later.
 See [dashboard credentials and multi-user setup](hyperv/README.md#dashboard-accounts)
 for the defaults and how to change them. See the [Ubuntu upgrade
 workflow](linux-guest/README.md) and [worker tools](linux-worker/README.md).
-The installer below is for native Windows workers.
+## Earlier native Windows installation
+
+The remaining setup and login instructions below apply to native Windows workers.
 
 Start with these installed:
 

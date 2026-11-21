@@ -1,7 +1,7 @@
 # Testing and evidence guide
 
 The [findings](findings.md) and [security posture](security-posture.md) describe
-the selected deployment. [Historical notes](history/README.md) preserve 29 setup,
+the earlier native Windows deployment. [Historical notes](history/README.md) preserve 29 setup,
 comparison, test and intervention reports. Their dates/configurations matter;
 older claims about forks, unrepeated reboot tests or missing provider tests are
 superseded by the current findings.
@@ -15,6 +15,7 @@ a checkpoint restore, network and file boundaries, and cleanup.
 ```powershell
 go test ./...
 go vet ./...
+python -B -m unittest discover -s tests -p "test_*.py"
 pwsh -NoProfile -File ./tests/installer.tests.ps1
 pwsh -NoProfile -File ./tests/disk-maintenance.tests.ps1
 node --test ./tests/office-fixture.test.mjs
