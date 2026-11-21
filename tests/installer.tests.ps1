@@ -78,6 +78,26 @@ try {
         }finally{$null=Invoke-Hidden docker @('volume','rm',$volumeName)}
         $checks++
     }
+    # Exercise the real selection prompt without renewing a provider session.
+    Copy-Item "$repo/hyperv/Connect-Providers.ps1" $temporary
+    @'
+param($Name,$Directory,$Action,$Provider)
+if ($Name -ne 'Login-Test' -or $Directory -ne $PSScriptRoot -or $Action -ne 'Auth') { throw 'Incorrect login target' }
+Write-Output $Provider
+'@ | Set-Content "$temporary/Connect-Guest.ps1"
+    foreach ($case in @(
+        @{answers=@('');want=''}, @{answers=@('none');want=''},
+        @{answers=@('codex');want='codex'}, @{answers=@('wrong','agy, CODEX, agy');want='agy,codex'},
+        @{answers=@('all');want='codex,claude,agy'}
+    )) {
+        $seen = & {
+            $responses=[Collections.Generic.Queue[string]]::new([string[]]$case.answers)
+            function Read-Host { $responses.Dequeue() }
+            & "$temporary/Connect-Providers.ps1" -Name Login-Test -Directory $temporary
+        }
+        Assert (($seen -join ',') -eq $case.want) 'Unexpected provider sign-in selection'
+    }
+    $checks++
     Write-Host "$checks installer test groups passed."
 }finally{
     $resolved=[IO.Path]::GetFullPath($temporary)

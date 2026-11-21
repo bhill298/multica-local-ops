@@ -18,8 +18,12 @@ Multica source and provider tools. The Ubuntu ISO checksum, Multica commit,
 service image digests and Codex/Claude CLI versions are pinned. Base image
 tags, distro packages and Agy's installer can change. New VMs start on Multica
 v0.11.1. Use `./update-vm.ps1` to check for a newer release. A new install
-creates local keys and an empty workspace. Sign in to each provider once
-for its new worker home. Back up live work separately.
+creates local keys and an empty workspace. At the end of an interactive
+install, pick any combination of `codex`, `claude`, and `agy`, type `all`,
+or press Enter to skip sign-in. Use `./install.ps1 -HyperV -SkipProviderLogin`
+for unattended setup. Providers can be connected later. The default lead
+and VM admin use Codex, so those agents need Codex credentials before they
+can run. Back up live work separately.
 Use `install-vm.ps1 -SourceIso <file>` to reuse verified installation media.
 Pass `-Processors`, `-MaximumGiB`, `-DiskGiB`, `-Keep` or `-SkipProjectDrive`
 to override the host-size defaults, growable disk, checkpoint retention, or
@@ -105,6 +109,12 @@ production setup also needs its own enrollment flow. In the dashboard, open
 who can run each agent in its Access settings. [Sign-in and signup](https://multica.ai/docs/auth-setup)
 · [Members and roles](https://multica.ai/docs/members-roles) · [Agent access](https://multica.ai/docs/agents)
 
+We tested a custom owner email and six-digit PIN against a fresh v0.11.1
+database and empty worker homes. The installer enrolled all three runtimes
+and created the eight daily agents before any model-provider login. A second
+user accepted an invitation and joined the test workspace. The test used
+local verification codes and did not exercise SMTP delivery.
+
 ## Workers and project files
 
 Each provider has its own persistent home. Codex powers the six-person team.
@@ -157,7 +167,40 @@ sign-in command. For independent logins use `-Action AdminAuth` and
 
 For Claude or Agy use `-Action Auth -Provider claude` or
 `-Action Auth -Provider agy` from Windows. Each opens that provider's own
-login in its daily worker. These commands also work after a session expires.
+login in its daily worker. Exit Agy's interactive session after signing in
+to return to setup. These commands also work after a session expires.
+
+The live shared-login test copied the actual admin Codex credential with
+`-Action SyncCodexAuth`, then submitted jobs to the daily Builder and VM
+Admin simultaneously. Both made successful model calls and posted their
+measured execution times. Their 30-second shell checks overlapped by 26
+seconds. The Claude Haiku and Gemini 3.8 Flash workers also completed separate
+login checks. Long-term refresh of two independently used copies was not tested.
+
+### Other model endpoints and API keys
+
+An agent's settings in the web UI include **Environment variables** and
+**Custom arguments**. Configure the model and credentials for the provider CLI
+that runs that agent. Multica stores custom environment values in plaintext
+in its database. Use a limited key and keep it out of custom arguments and
+Git. [Multica agent configuration](https://multica.ai/docs/agents-create)
+
+For Codex, define a provider in the worker's `~/.codex/config.toml` with
+its `base_url`, `wire_api = "responses"`, and `env_key = "WORKER_MODEL_KEY"`.
+Select that provider with `model_provider`, set the agent's model to one the
+endpoint serves, and supply `WORKER_MODEL_KEY` in the agent's environment.
+The installed CLI completed a test against a local Responses API fixture
+using a synthetic key. For Claude Code, a compatible gateway can use
+`ANTHROPIC_BASE_URL` and the gateway's supported authentication variable.
+Custom endpoints for Agy have not been verified. The existing VM network
+rules still apply, and localhost in a worker refers to that worker.
+[Codex configuration](https://developers.openai.com/codex/config-reference)
+· [Claude Code gateways](https://code.claude.com/docs/en/llm-gateway)
+
+The installer has no global worker endpoint or API-key prompt. The backend's
+`MULTICA_LLM_BASE_URL` and `MULTICA_LLM_API_KEY` configure server features
+such as chat titles and follow-up suggestions. Worker runs use the provider
+CLI's configuration. [Server settings](https://multica.ai/docs/environment-variables)
 
 ### Automatic startup test, November 20, 2026
 

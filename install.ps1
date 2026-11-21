@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [switch]$HyperV,
+    [switch]$SkipProviderLogin,
     [string]$SettingsFile = (Join-Path $PSScriptRoot 'config/settings.json'),
     [string]$Root = (Join-Path $env:USERPROFILE '.multica/local-ops'),
     [string]$BinRoot = (Join-Path $env:USERPROFILE '.multica/stock-runtime/bin'),
@@ -11,10 +12,11 @@ param(
     [switch]$RenewLocalAuth
 )
 if ($HyperV) {
-    if ($PSBoundParameters.Count -gt 1) { throw 'For VM-specific options run install-vm.ps1 directly.' }
-    & "$PSScriptRoot/install-vm.ps1"
+    if ($PSBoundParameters.Keys | Where-Object { $_ -notin 'HyperV','SkipProviderLogin' }) { throw 'For VM-specific options run install-vm.ps1 directly.' }
+    & "$PSScriptRoot/install-vm.ps1" -SkipProviderLogin:$SkipProviderLogin
     return
 }
+if ($SkipProviderLogin) { throw 'SkipProviderLogin applies to the Hyper-V installer.' }
 . (Join-Path $PSScriptRoot 'scripts/common.ps1')
 . (Join-Path $PSScriptRoot 'scripts/team.ps1')
 if (-not $IsWindows) { throw 'This installer requires native Windows and PowerShell 7.' }
