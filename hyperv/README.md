@@ -55,12 +55,16 @@ Run these commands from the repository root:
 ```
 
 New VMs use `vm_login_email` from `config/settings.json` (currently
-`a@a.com`) and generate a six-digit code. To choose your own code on first
+`user@localhost`) and generate a six-digit code. To choose your own code on first
 install, run `./install-vm.ps1 -PromptForLoginCode`. The prompt masks your
 input and passes it over SSH. Existing VMs keep their saved email and code
 on reprovision. Older installations without a saved email use the original
-`email` setting. The full-access admin dashboard has its own code and uses
-the original email setting.
+`email` setting. New admin workspaces use `vm_admin_login_email`
+(`admin@localhost`). To choose the admin PIN on first setup, run
+`./hyperv/Connect-Guest.ps1 -Action AdminAuth -PromptForLoginCode`.
+You can enter the same PIN at both prompts. Otherwise each instance generates
+its own code. Anyone who knows a shared PIN and can reach the admin dashboard
+can queue work for the root-capable VM worker.
 
 Daily browser sessions use the configured `auth.token_ttl` of 87,600 hours
 (3,650 days). In the Edge login test the auth cookie expired after 400 days

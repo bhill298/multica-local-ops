@@ -1,5 +1,6 @@
 """Owner-launched guest administrator with an independent Multica queue and login."""
 import json
+from getpass import getpass
 import os
 from pathlib import Path
 import pwd
@@ -25,7 +26,8 @@ def main():
     os.umask(0o077)
     STATE.mkdir(mode=0o700,exist_ok=True)
     guest.STATE=STATE
-    creds=guest.credentials()
+    initial_code = getpass("Initial admin dashboard code (six digits): ") if "--prompt-for-login-code" in sys.argv else None
+    creds=guest.credentials(initial_email=guest.SETTINGS["vm_admin_login_email"], initial_code=initial_code)
     data=guest.render(creds, session_ttl="168h")
     for provider in guest.PROVIDERS:
         del data["services"][provider],data["networks"][provider],data["volumes"][provider+"-home"]
@@ -59,7 +61,7 @@ def main():
             guest.run("docker","cp",container+":"+src,str(BIN/name))
             (BIN/name).chmod(0o755)
     finally: guest.run("docker","rm",container,stdout=subprocess.DEVNULL)
-    email=guest.SETTINGS["email"]
+    email=creds.get("email", guest.SETTINGS["email"])
     for i in range(60):
         try:
             guest.api("/auth/send-code",body={"email":email},base=BASE)

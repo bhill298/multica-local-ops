@@ -2,8 +2,8 @@
 set -euo pipefail
 cd /opt/multica-local/hyperv
 case "${1:-}" in
-  start) exec python3 admin.py ;;
-  auth) exec python3 admin.py --auth ;;
+  start) shift; exec python3 admin.py "$@" ;;
+  auth) shift; exec python3 admin.py --auth "$@" ;;
   stop)
     systemctl stop multica-manual-admin.service || true
     docker compose -p multica-owner-only -f /var/lib/multica-owner-only/compose.json stop

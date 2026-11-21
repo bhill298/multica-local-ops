@@ -67,7 +67,11 @@ switch ($Action) {
         $store=if ($Action -eq 'AdminCode') {'multica-owner-only'} else {'multica-local'}
         ssh @opts $target ("sudo python3 -c 'import json;print(json.load(open(`"/var/lib/{0}/credentials.json`"))[`"code`"])'" -f $store)
     }
-    Admin { ssh @opts -t $target 'sudo bash /opt/multica-local/hyperv/admin.sh start' }
-    AdminAuth { ssh @opts -t $target 'sudo bash /opt/multica-local/hyperv/admin.sh auth' }
+    { $_ -in 'Admin','AdminAuth' } {
+        $mode=if ($Action -eq 'Admin') { 'start' } else { 'auth' }
+        $command="sudo bash /opt/multica-local/hyperv/admin.sh $mode"
+        if ($PromptForLoginCode) { $command+=' --prompt-for-login-code' }
+        ssh @opts -t $target $command
+    }
     AdminStop { ssh @opts $target 'sudo bash /opt/multica-local/hyperv/admin.sh stop' }
 }
