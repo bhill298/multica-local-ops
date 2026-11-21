@@ -54,24 +54,47 @@ Run these commands from the repository root:
 ./new-goal.ps1 -HyperV -Title 'Project goal' -OutcomeFile ./outcome.txt
 ```
 
-New VMs use `vm_login_email` from `config/settings.json` (currently
-`user@localhost`) and generate a six-digit code. To choose your own code on first
-install, run `./install-vm.ps1 -PromptForLoginCode`. The prompt masks your
-input and passes it over SSH. Existing VMs keep their saved email and code
-on reprovision. Older installations without a saved email use the original
-`email` setting. New admin workspaces use `vm_admin_login_email`
-(`admin@localhost`). To choose the admin PIN on first setup, run
-`./hyperv/Connect-Guest.ps1 -Action AdminAuth -PromptForLoginCode`.
-You can enter the same PIN at both prompts. Otherwise each instance generates
-its own code. Anyone who knows a shared PIN and can reach the admin dashboard
-can queue work for the root-capable VM worker.
+## Dashboard accounts
 
-Daily browser sessions use the configured `auth.token_ttl` of 87,600 hours
-(3,650 days). In the Edge login test the auth cookie expired after 400 days
-and the web app's login marker after 365 days. Clearing cookies also ends
-browser access. The manual admin dashboard uses a seven-day server lifetime.
-Anyone who can reach the daily API and knows its email and fixed code can
-sign in as the daily owner. Keep the dashboard on the loopback SSH relay.
+| Dashboard | Windows URL | Default email | Default PIN | When to use it |
+| --- | --- | --- | --- | --- |
+| Daily | http://localhost:43130 | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
+| VM admin | http://localhost:43230 | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. Start the admin worker and tunnel manually. |
+
+Open the URL, enter the email, request a verification code, then enter the PIN.
+No email is sent. Both accounts own their respective Multica workspaces. The
+admin worker has passwordless sudo on Ubuntu, including control over Docker and
+the daily workers. It has a separate API, database and queue so a daily
+worker's owner token cannot submit a job that will run as root when you next
+start the admin worker. Both URLs use loopback SSH tunnels. The PIN is public
+and anyone with access to an open admin tunnel can use it.
+
+The installer prints a quick start with the installed login addresses.
+Run `./hyperv/Connect-Guest.ps1 -Action QuickStart` to print it again,
+including while the admin services are stopped. Both servers issue sessions
+for `auth.token_ttl` (87,600 hours, or 3,650 days). In Edge the auth cookie
+lasted up to 400 days and the web app's login marker up to 365 days. A browser
+that clears or expires its cookies can ask you to sign in sooner.
+
+**Choose different credentials on a fresh install.** Edit `vm_login_email` and
+`vm_admin_login_email` in [settings.json](../config/settings.json). The shared
+development default is `vm_default_login_code`. For private, per-account PINs,
+run `./install-vm.ps1 -PromptForLoginCode` for daily setup and
+`./hyperv/Connect-Guest.ps1 -Action AdminAuth -PromptForLoginCode` on first
+admin setup. Both prompts accept six digits. Reprovisioning preserves saved
+credentials, including the original `email` on older VMs. For a saved PIN,
+run the helper with `-Action LoginCode` or `-Action AdminCode`.
+
+**For a multi-user deployment**, give each person their own sign-in. Use
+Multica's production auth configuration, remove the fixed development code
+and configure email delivery (SMTP or Resend) or Google sign-in. This VM
+installer uses its development code to enroll daemons automatically, so a
+production setup also needs its own enrollment flow. In the dashboard, open
+**Settings → Members** to invite people and assign workspace roles. Configure
+who can run each agent in its Access settings. [Sign-in and signup](https://multica.ai/docs/auth-setup)
+· [Members and roles](https://multica.ai/docs/members-roles) · [Agent access](https://multica.ai/docs/agents)
+
+## Workers and project files
 
 Each provider has its own persistent home. Codex powers the six-person team.
 Claude and Agy have their own worker agents. Agy is configured for Gemini

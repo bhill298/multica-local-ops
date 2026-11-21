@@ -1,7 +1,7 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
     [switch]$PromptForLoginCode)
@@ -41,6 +41,38 @@ switch ($Action) {
         } finally { if (Test-Path $archive) { Remove-Item -LiteralPath $archive } }
     }
     Status { ssh @opts $target "$compose ps" }
+    QuickStart {
+        $logins=ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/dashboard_logins.py' | ConvertFrom-Json
+        $helper='./hyperv/Connect-Guest.ps1'
+        if ($Name -ne 'Multica-Ubuntu') { $helper+=" -Name $Name" }
+        if ($Directory -ne "$env:LOCALAPPDATA/MulticaVM/media") {
+            $helper+=" -Directory '{0}'" -f ([IO.Path]::GetFullPath($Directory)).Replace("'","''")
+        }
+        $dailyPin=if ($logins.daily.pin) { $logins.daily.pin } else { "run $helper -Action LoginCode" }
+        $adminPin=if ($logins.admin.pin) { $logins.admin.pin } else { "run $helper -Action AdminCode" }
+        @"
+
+Multica quick start
+
+Daily dashboard    http://localhost:43130
+Email              $($logins.daily.email)
+PIN                $dailyPin
+Open the dashboard, enter the email, request a code, then enter the PIN.
+For a new worker, sign in to its model provider once. Use codex, claude or agy:
+  $helper -Action Auth -Provider codex
+
+VM admin dashboard http://localhost:43230  (manual start, full Ubuntu access)
+Email              $($logins.admin.email)
+PIN                $adminPin
+Run these from the repo in PowerShell:
+  $helper -Action AdminAuth    # first use, for the admin worker's provider
+  $helper -Action Admin
+  $helper -Action AdminUI
+Leave the tunnel open and sign in at the admin URL. When finished, press Ctrl+C
+in the tunnel window, then run:
+  $helper -Action AdminStop
+"@
+    }
     Goal { $Goal | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/new-goal.py' }
     MapProjects { & "$PSScriptRoot/Map-Projects.ps1" -Name $Name -Directory $Directory }
     Shell { ssh @opts -t $target }

@@ -28,7 +28,7 @@ def main():
     guest.STATE=STATE
     initial_code = getpass("Initial admin dashboard code (six digits): ") if "--prompt-for-login-code" in sys.argv else None
     creds=guest.credentials(initial_email=guest.SETTINGS["vm_admin_login_email"], initial_code=initial_code)
-    data=guest.render(creds, session_ttl="168h")
+    data=guest.render(creds)
     for provider in guest.PROVIDERS:
         del data["services"][provider],data["networks"][provider],data["volumes"][provider+"-home"]
     backend=data["services"]["backend"]

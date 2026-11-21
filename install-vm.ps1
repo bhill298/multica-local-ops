@@ -23,3 +23,4 @@ if ($proc.ExitCode) { throw "Hyper-V setup failed. See $env:ProgramFiles/Multica
 & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision -PromptForLoginCode:$PromptForLoginCode
 & "$PSScriptRoot/hyperv/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive
 if (!$SkipProjectDrive) { & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action MapProjects }
+& "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action QuickStart

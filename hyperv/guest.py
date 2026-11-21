@@ -55,12 +55,13 @@ def api(path, token=None, body=None, base="http://127.0.0.1:43131"):
 
 def credentials(*, initial_email=None, initial_code=None):
     path = STATE / "credentials.json"
-    if initial_code is not None and not re.fullmatch(r"[0-9]{6}", initial_code):
+    code = SETTINGS["vm_default_login_code"] if initial_code is None else initial_code
+    if not re.fullmatch(r"[0-9]{6}", code):
         raise ValueError("The dashboard verification code must be six digits.")
     if not path.exists():
         temp = path.with_suffix(".new")
         new = {"password": secrets.token_hex(32), "jwt": secrets.token_hex(48),
-               "code": initial_code or f"{secrets.randbelow(1_000_000):06d}"}
+               "code": code}
         if initial_email is not None:
             new["email"] = initial_email
         temp.write_text(json.dumps(new))
@@ -89,7 +90,7 @@ def kvm_group():
     return str(device.stat().st_gid)
 
 
-def render(creds, kvm_gid=None, *, session_ttl=None):
+def render(creds, kvm_gid=None):
     images = SETTINGS["images"]
     database = {"image": images["postgres"], "environment": {"POSTGRES_DB": "multica",
                 "POSTGRES_USER": "multica", "POSTGRES_PASSWORD": creds["password"]},
@@ -101,7 +102,7 @@ def render(creds, kvm_gid=None, *, session_ttl=None):
                "volumes": ["uploads:/app/data/uploads"], "environment": {
                "DATABASE_URL": "postgres://multica:" + creds["password"] + "@postgres:5432/multica?sslmode=disable",
                "JWT_SECRET": creds["jwt"], "PORT":"8080","APP_ENV":"development",
-               "AUTH_TOKEN_TTL":session_ttl or SETTINGS["auth"]["token_ttl"],"MULTICA_DEV_VERIFICATION_CODE":creds["code"],
+               "AUTH_TOKEN_TTL":SETTINGS["auth"]["token_ttl"],"MULTICA_DEV_VERIFICATION_CODE":creds["code"],
                "ALLOWED_EMAILS":creds.get("email", SETTINGS["email"]),"ALLOW_SIGNUP":"true","DO_NOT_TRACK":"1",
                "MULTICA_APP_URL":ui,"FRONTEND_ORIGIN":ui,"CORS_ALLOWED_ORIGINS":ui}}
     frontend = {"image":images["frontend"], "networks":["web"], "ports":[f"127.0.0.1:{PORT}:3000"],
