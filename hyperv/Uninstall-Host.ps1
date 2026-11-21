@@ -41,6 +41,7 @@ try {
     if ($portal){$op=[IO.File]::Open("$root/portal/operation.lock",'OpenOrCreate','ReadWrite','None')}
     @{id="$VMId";disk=$disk;keep=[bool]$KeepDisk} | ConvertTo-Json | Set-Content $receipt
     if ($portal) { . "$PSScriptRoot/Portal-Hosts.ps1"; Set-PortalHosts -Id $VMId -Prefix $portal.prefix -Remove }
+    if ($portal) { Get-NetFirewallRule -Name "MulticaPortal-LAN-$VMId" -ErrorAction SilentlyContinue | Remove-NetFirewallRule }
     foreach ($suffix in 'unattended boot','address refresh','managed checkpoints','project drive','dashboard relay','management portal') {
         $task=Get-ScheduledTask -TaskPath '\' -TaskName "$Name $suffix" -ErrorAction SilentlyContinue
         if ($task) { Disable-ScheduledTask -InputObject $task | Out-Null; Stop-ScheduledTask -InputObject $task; Unregister-ScheduledTask -InputObject $task -Confirm:$false }

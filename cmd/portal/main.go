@@ -1,4 +1,4 @@
-// The Windows operator's loopback-only landing page and dashboard proxy.
+// The Windows operator's landing page and dashboard proxy.
 package main
 
 import (
@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ var favicon []byte
 
 type config struct {
 	ManagementAuth                              string
+	LanBinding                                  string // Optional interface address with its on-link prefix length.
 	Name, Prefix, Directory, Script, PowerShell string
 	Home, Daily, Admin, Port                    int
 }
@@ -48,7 +50,9 @@ type portal struct {
 }
 
 func (p *portal) host(suffix string) string {
-	h := p.cfg.Prefix + suffix + ".localhost"
+	return p.authority(p.cfg.Prefix + suffix + ".localhost")
+}
+func (p *portal) authority(h string) string {
 	if p.cfg.Port != 80 {
 		h += fmt.Sprintf(":%d", p.cfg.Port)
 	}
@@ -102,11 +106,14 @@ func proxy(target, public string) http.Handler {
 	return rp
 }
 func (p *portal) handler() http.Handler {
+	return p.routes(p.host(""), p.host("-user"), p.host("-admin"), true)
+}
+
+func (p *portal) routes(home, daily, admin string, local bool) http.Handler {
 	html := page
 	if p.key != "" {
 		html = bytes.Replace(page, []byte("<html "), []byte("<html data-key-required "), 1)
 	}
-	daily, admin := p.host("-user"), p.host("-admin")
 	links := map[string]string{"/user": "http://" + daily + "/login", "/admin": "http://" + admin + "/login"}
 	dashboards := map[string]http.Handler{daily: proxy(fmt.Sprintf("http://localhost:%d", p.cfg.Daily), "http://"+daily), admin: proxy(fmt.Sprintf("http://127.0.0.1:%d", p.cfg.Admin), "http://"+admin)}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -115,8 +122,7 @@ func (p *portal) handler() http.Handler {
 			d.ServeHTTP(w, r)
 			return
 		}
-		home := p.host("")
-		legacy := host == fmt.Sprintf("localhost:%d", p.cfg.Home) || host == fmt.Sprintf("127.0.0.1:%d", p.cfg.Home)
+		legacy := local && (host == fmt.Sprintf("localhost:%d", p.cfg.Home) || host == fmt.Sprintf("127.0.0.1:%d", p.cfg.Home))
 		if host != home && !legacy {
 			http.Error(w, "Unknown dashboard hostname", 421)
 			return
@@ -215,6 +221,19 @@ func (p *portal) handler() http.Handler {
 	})
 }
 
+func (p *portal) lanHandler(binding netip.Prefix) http.Handler {
+	domain := p.cfg.Prefix + ".home.arpa"
+	routes := p.routes(p.authority(domain), p.authority("user."+domain), p.authority("admin."+domain), false)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		peer, err := netip.ParseAddrPort(r.RemoteAddr)
+		if err != nil || !binding.Contains(peer.Addr()) {
+			http.Error(w, "Outside the configured LAN subnet.", http.StatusForbidden)
+			return
+		}
+		routes.ServeHTTP(w, r)
+	})
+}
+
 //go:embed portal.js
 var js []byte
 
@@ -274,6 +293,23 @@ func main() {
 				log.Fatal(e)
 			}
 		}(l)
+	}
+	if c.LanBinding != "" {
+		binding, err := netip.ParsePrefix(c.LanBinding)
+		if err != nil || !binding.Addr().Is4() || !binding.Addr().IsPrivate() || binding.Bits() < 1 {
+			log.Fatal("Invalid private IPv4 LAN binding")
+		}
+		addr := net.JoinHostPort(binding.Addr().String(), fmt.Sprint(c.Port))
+		srv := &http.Server{Handler: p.lanHandler(binding), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
+		// DHCP or Wi-Fi may come up after logon. Keep local management available while waiting.
+		for {
+			if l, err := net.Listen("tcp4", addr); err == nil {
+				if err := srv.Serve(l); errors.Is(err, http.ErrServerClosed) {
+					return
+				}
+			}
+			time.Sleep(10 * time.Second)
+		}
 	}
 	select {}
 }

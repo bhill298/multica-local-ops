@@ -122,7 +122,7 @@ starts the portal and a second task opens the two SSH forwards to Ubuntu.
 The VM has its own SYSTEM task for boot, before Windows sign-in. Ubuntu
 starts Docker, both Multica instances and their workers.
 
-The portal listens on Windows IPv4 loopback. It routes requests by hostname
+By default the portal listens on Windows IPv4 loopback. It routes requests by hostname
 and keeps the two app logins on separate origins. Setup adds one marked block
 to the Windows hosts file. It uses neither IP Helper nor netsh portproxy.
 By default the main installation needs ports 80, 43130, 43133 and 43230.
@@ -131,6 +131,60 @@ If port 80 is taken, use `./install-vm.ps1 -WebPort 8080` or run
 the resulting URL. Secondary installations use their VM name and their
 configured home port by default. The portal builds with local Go or with
 a Linux Docker Desktop build container. It runs directly on Windows afterward.
+
+### Optional LAN access
+
+To use the daily dashboard, the Ubuntu admin dashboard and Windows management
+from another device, enable an additional listener on the PC's home-network
+IPv4 address. From the checkout, substitute your actual address:
+
+```powershell
+./hyperv/Install-Portal.ps1 -LanAddress 192.168.1.50
+```
+
+On a fresh deployment you can pass the same option to `./install.ps1 -HyperV`.
+Use a DHCP reservation or a stable address. Windows must classify that
+interface as **Private**. You can check with `Get-NetConnectionProfile` and
+change the profile in the adapter's **Network & internet** properties if it
+is your trusted home network. Setup leaves the Windows network category alone.
+
+In your router's local DNS, point these three names to the same address.
+For a single client, this line in that client's hosts file also works:
+
+```text
+192.168.1.50  multica.home.arpa  user.multica.home.arpa  admin.multica.home.arpa
+```
+
+Open `http://multica.home.arpa/` and choose a dashboard, or use
+`http://multica.home.arpa/manage`. The two dashboard names let you stay
+signed in to both in the same browser. The installer prints the names and
+port for your installation. The usual `.localhost` URLs still work on the PC.
+
+The Windows firewall rule allows the portal executable on the selected
+address, interface and TCP port for the Private profile. The portal also
+checks the connecting peer against the IPv4 subnet recorded at setup.
+The two SSH forwards stay on loopback. Management and both dashboards keep
+their existing access settings. With the defaults, anyone admitted from
+that subnet can use the public PIN for the Ubuntu admin and can request
+Windows power or update operations. Actions requiring Windows elevation
+still need approval on the PC. If pairing is enabled, the LAN browser
+needs its own pairing at `/manage#<operator-key>` on the LAN origin.
+
+LAN mode uses plain HTTP. Someone able to intercept that connection can
+read or modify requests, including sign-in codes and session cookies.
+Router port forwarding is unnecessary. Normal sign-in and management
+status worked on HTTP in a browser test. Browser features that require a
+secure context can behave differently from localhost.
+
+To return to loopback only and remove the installer's LAN firewall rule:
+
+```powershell
+./hyperv/Install-Portal.ps1 -LanAddress 127.0.0.1
+```
+
+Omitting the option on a portal reinstall preserves the current selection.
+Uninstall removes the managed firewall rule. You can remove any DNS or
+client hosts entries you created.
 
 ### Windows management
 

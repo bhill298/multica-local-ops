@@ -4,6 +4,7 @@ param(
     [switch]$HyperV,
     [switch]$SkipProviderLogin,
     [switch]$RequireManagementKey,
+    [ipaddress]$LanAddress,
     [ValidateSet('codex','claude','agy')][string]$AdminProvider,
     [string]$AdminModel,
     [string]$SettingsFile = (Join-Path $PSScriptRoot 'config/settings.json'),
@@ -15,7 +16,7 @@ param(
     [switch]$RenewLocalAuth
 )
 if ($HyperV) {
-    if ($PSBoundParameters.Keys | Where-Object { $_ -notin 'HyperV','SkipProviderLogin','AdminProvider','AdminModel','RequireManagementKey' }) { throw 'For VM-specific options run install-vm.ps1 directly.' }
+    if ($PSBoundParameters.Keys | Where-Object { $_ -notin 'HyperV','SkipProviderLogin','AdminProvider','AdminModel','RequireManagementKey','LanAddress' }) { throw 'For VM-specific options run install-vm.ps1 directly.' }
     $vmOptions=@{} + $PSBoundParameters
     $vmOptions.Remove('HyperV')
     & "$PSScriptRoot/install-vm.ps1" @vmOptions
@@ -23,6 +24,7 @@ if ($HyperV) {
 }
 if ($SkipProviderLogin -or $AdminProvider -or $AdminModel) { throw 'Provider options apply to the Hyper-V installer.' }
 if ($PSBoundParameters.ContainsKey('RequireManagementKey')) { throw 'RequireManagementKey applies to the Hyper-V portal.' }
+if ($LanAddress) { throw 'LanAddress applies to the Hyper-V portal.' }
 . (Join-Path $PSScriptRoot 'scripts/common.ps1')
 . (Join-Path $PSScriptRoot 'scripts/team.ps1')
 if (-not $IsWindows) { throw 'This installer requires native Windows and PowerShell 7.' }

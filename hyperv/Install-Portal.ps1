@@ -1,6 +1,6 @@
 #Requires -Version 7.3
 param([ValidatePattern('^[A-Za-z0-9-]{1,50}$')][string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateRange(1,65535)][int]$WebPort,[switch]$SkipProjectDrive,[switch]$RequireManagementKey)
+    [ValidateRange(1,65535)][int]$WebPort,[ipaddress]$LanAddress,[switch]$SkipProjectDrive,[switch]$RequireManagementKey)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 $Directory=[IO.Path]::GetFullPath($Directory)
@@ -15,6 +15,22 @@ if (!$WebPort) {
 }
 if ($WebPort -in $ports.daily,$ports.admin) {throw 'WebPort overlaps a dashboard tunnel.'}
 $exe=Join-Path $dir 'multica-portal.exe'
+if (!$LanAddress) {
+    $installed=if (Test-Path "$root/portal/install.json"){Get-Content "$root/portal/install.json" -Raw | ConvertFrom-Json}
+    $LanAddress=if ($installed.lanAddress) {$installed.lanAddress} else {'127.0.0.1'}
+}
+$lan=& "$PSScriptRoot/Get-PortalLanBinding.ps1" -Address $LanAddress
+if ($lan) {
+    $listeners=@(Get-NetTCPConnection -State Listen -LocalPort $WebPort -ErrorAction SilentlyContinue |
+        Where-Object LocalAddress -in $LanAddress.IPAddressToString,'0.0.0.0','::')
+    foreach ($l in $listeners) {
+        if ((Get-Process -Id $l.OwningProcess).Path -ne $exe){throw "LAN port $WebPort is occupied. Select another -WebPort."}
+    }
+    if (!$listeners) {
+        $probe=[Net.Sockets.TcpListener]::new($LanAddress,$WebPort)
+        try {$probe.ExclusiveAddressUse=$true;$probe.Start()} finally {$probe.Stop()}
+    }
+}
 if ($WebPort -ne $ports.home) {
     $listeners=@(Get-NetTCPConnection -State Listen -LocalPort $WebPort -ErrorAction SilentlyContinue | Where-Object LocalAddress -in '0.0.0.0','127.0.0.1','::','::1')
     foreach ($l in $listeners) {
@@ -58,9 +74,9 @@ $standard=Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
 if (Test-Path -LiteralPath $standard) {
     if ([version](& $standard -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()') -ge [version]'7.3') { $pwsh=$standard }
 }
-$arg='-NoProfile -NonInteractive -File "{0}" -Name {1} -Directory "{2}" -Prefix {3} -WebPort {4}' -f "$PSScriptRoot/Install-PortalHost.ps1",$Name,$Directory,$prefix,$WebPort
+$arg='-NoProfile -NonInteractive -File "{0}" -Name {1} -Directory "{2}" -Prefix {3} -WebPort {4} -LanAddress {5}' -f "$PSScriptRoot/Install-PortalHost.ps1",$Name,$Directory,$prefix,$WebPort,$LanAddress
 $p=Start-Process $pwsh -Verb RunAs -WindowStyle Hidden -ArgumentList $arg -Wait -PassThru
-if ($p.ExitCode) {throw 'Host setup failed. Check the VM identity and hosts file for conflicts.'}
+if ($p.ExitCode) {throw 'Host setup failed. Check the VM identity, hosts file and any LAN firewall policy.'}
 $task="$Name management portal"
 if (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $task
@@ -71,6 +87,7 @@ if (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue) {
 Move-Item -LiteralPath $build -Destination $exe -Force
 [IO.File]::WriteAllText($keyFile,$secret)
 $config=@{name=$Name;prefix=$prefix;home=$ports.home;daily=$ports.daily;admin=$ports.admin;port=$WebPort;directory=$Directory;script="$root/portal/Portal-Action.ps1";powerShell=$pwsh;managementAuth=$mode}
+if ($lan) { $config.lanBinding=$lan.Binding }
 $config | ConvertTo-Json | Set-Content -LiteralPath $configPath
 $pair=Join-Path $dir open-management.html
 if (!$RequireManagementKey) {
@@ -84,6 +101,28 @@ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -M
 Register-ScheduledTask -TaskName $task -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 & "$PSScriptRoot/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive -Portal
 $authority=$prefix+'.localhost'+$(if ($WebPort -ne 80){":$WebPort"})
+if ($lan) {
+    $suffix=if ($WebPort -ne 80){":$WebPort"}else{''}
+    $expected="http://admin.$prefix.home.arpa$suffix/login"
+    # Check the LAN socket directly. Client-side DNS may not be configured yet.
+    $http=[Net.Http.HttpClient]::new([Net.Http.HttpClientHandler]@{UseProxy=$false;AllowAutoRedirect=$false})
+    $http.Timeout=[TimeSpan]::FromSeconds(2)
+    $http.DefaultRequestHeaders.Host="$prefix.home.arpa$suffix"
+    try {
+        $deadline=[datetime]::UtcNow.AddSeconds(15)
+        do {
+            try {
+                $answer=$http.GetAsync("http://${LanAddress}:$WebPort/admin").GetAwaiter().GetResult()
+                try {$ready=[int]$answer.StatusCode -eq 302 -and $answer.Headers.Location.AbsoluteUri -eq $expected}
+                finally {$answer.Dispose()}
+            } catch {$ready=$false}
+            if (!$ready) {Start-Sleep -Milliseconds 500}
+        } until ($ready -or [datetime]::UtcNow -ge $deadline)
+        if (!$ready){throw "Local portal is installed, but the LAN listener on ${LanAddress}:$WebPort did not return the expected redirect. Verify the address and port, then rerun."}
+    } finally {$http.Dispose()}
+    "In LAN DNS point $prefix.home.arpa, user.$prefix.home.arpa and admin.$prefix.home.arpa to $LanAddress."
+    "Open http://$prefix.home.arpa$suffix/ on a LAN client."
+}
 if (!$RequireManagementKey) { "Open http://$authority/manage on Windows."; return }
 [IO.File]::WriteAllText($pair,('<meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>location.replace({0})</script>' -f (ConvertTo-Json "http://$authority/manage#$secret" -Compress)))
 $shell=New-Object -ComObject WScript.Shell

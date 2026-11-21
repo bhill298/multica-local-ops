@@ -4,11 +4,12 @@ param([string]$Name='Multica-Ubuntu',[string]$SourceIso,
     [string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
     [int]$Processors,[int]$MaximumGiB,[ValidateRange(40,2048)][int]$DiskGiB=128,[ValidateRange(1,65535)][int]$WebPort,
     [ValidateRange(1,52)][int]$Keep=4,[switch]$SkipProjectDrive,
-    [ValidateSet('On','Off')][string]$NestedVirtualization,[switch]$PromptForLoginCode,[switch]$SkipProviderLogin,[switch]$RequireManagementKey,
+    [ValidateSet('On','Off')][string]$NestedVirtualization,[switch]$PromptForLoginCode,[switch]$SkipProviderLogin,[switch]$RequireManagementKey,[ipaddress]$LanAddress,
     [ValidateSet('codex','claude','agy')][string]$AdminProvider,[string]$AdminModel)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if (!$IsWindows -or $Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Run on Windows with a valid VM name.' }
+if ($LanAddress) { $null=& "$PSScriptRoot/hyperv/Get-PortalLanBinding.ps1" -Address $LanAddress }
 foreach ($command in 'docker','ssh','scp','ssh-keygen','tar','Get-VM') {
     if (!(Get-Command $command -ErrorAction SilentlyContinue)) { throw "Install $command before provisioning. Hyper-V requires a supported Windows edition and virtualization enabled in firmware." }
 }
@@ -31,6 +32,7 @@ if ($AdminModel) { $adminOptions.Model=$AdminModel }
 & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision -PromptForLoginCode:$PromptForLoginCode @adminOptions
 $webOptions=@{}
 if ($WebPort){$webOptions.WebPort=$WebPort}
+if ($LanAddress){$webOptions.LanAddress=$LanAddress}
 if ($PSBoundParameters.ContainsKey('RequireManagementKey')) {$webOptions.RequireManagementKey=$RequireManagementKey}
 & "$PSScriptRoot/hyperv/Install-Portal.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive @webOptions
 if (!$SkipProjectDrive) { & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action MapProjects }

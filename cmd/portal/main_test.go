@@ -4,11 +4,53 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestLANRoutes(t *testing.T) {
+	p := portal{cfg: config{Prefix: "multica", Port: 8080, Home: 43130, Daily: 43133, Admin: 43230}}
+	h := p.lanHandler(netip.MustParsePrefix("192.168.4.27/24"))
+	for _, tc := range []struct {
+		path, host, peer, location string
+		want                       int
+	}{
+		{"/", "multica.home.arpa:8080", "192.168.4.91:45200", "", 200},
+		{"/user", "multica.home.arpa:8080", "192.168.4.91:45200", "http://user.multica.home.arpa:8080/login", 302},
+		{"/admin", "multica.home.arpa:8080", "192.168.4.91:45200", "http://admin.multica.home.arpa:8080/login", 302},
+		{"/api/job", "multica.home.arpa:8080", "192.168.4.91:45200", "", 200},
+		{"/manage", "multica.localhost:8080", "192.168.4.91:45200", "", 421},
+		{"/admin", "localhost:43130", "192.168.4.91:45200", "", 421},
+		{"/api/job", "multica.home.arpa:8080", "192.168.5.91:45200", "", 403},
+	} {
+		r := httptest.NewRequest("GET", "http://"+tc.host+tc.path, nil)
+		r.RemoteAddr = tc.peer
+		r.Header.Set("X-Forwarded-For", "192.168.4.91")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != tc.want || w.Header().Get("Location") != tc.location {
+			t.Errorf("%s %s%s: got %d %q", tc.peer, tc.host, tc.path, w.Code, w.Header().Get("Location"))
+		}
+	}
+	for _, origin := range []string{"http://multica.localhost:8080", "http://multica.home.arpa:8080"} {
+		r := httptest.NewRequest("POST", "http://multica.home.arpa:8080/api/action", strings.NewReader(`{"action":"unknown"}`))
+		r.RemoteAddr = "192.168.4.91:1000"
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		want := 403
+		if origin == "http://multica.home.arpa:8080" {
+			want = 400 // Accepted origin, rejected action.
+		}
+		if w.Code != want {
+			t.Errorf("management origin %s: got %d, want %d", origin, w.Code, want)
+		}
+	}
+}
 
 func TestManagementBoundary(t *testing.T) {
 	p := portal{cfg: config{Prefix: "multica", Port: 80, Home: 43130, Daily: 43133, Admin: 43230}, key: strings.Repeat("a", 64)}
