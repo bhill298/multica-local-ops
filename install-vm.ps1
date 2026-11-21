@@ -4,7 +4,7 @@ param([string]$Name='Multica-Ubuntu',[string]$SourceIso,
     [string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
     [int]$Processors,[int]$MaximumGiB,[ValidateRange(40,2048)][int]$DiskGiB=128,
     [ValidateRange(1,52)][int]$Keep=4,[switch]$SkipProjectDrive,
-    [ValidateSet('On','Off')][string]$NestedVirtualization)
+    [ValidateSet('On','Off')][string]$NestedVirtualization,[switch]$PromptForLoginCode)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if (!$IsWindows -or $Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Run on Windows with a valid VM name.' }
@@ -20,6 +20,6 @@ $arguments='-NoProfile -File "{0}" -Media "{1}" -Name {2} -Processors {3} -Maxim
 if ($NestedVirtualization) { $arguments+=" -NestedVirtualization $NestedVirtualization" }
 $proc=Start-Process (Get-Process -Id $PID).Path -WindowStyle Hidden -Verb RunAs -ArgumentList $arguments -PassThru -Wait
 if ($proc.ExitCode) { throw "Hyper-V setup failed. See $env:ProgramFiles/MulticaVM/$Name/provision.log." }
-& "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision
+& "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision -PromptForLoginCode:$PromptForLoginCode
 & "$PSScriptRoot/hyperv/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive
 if (!$SkipProjectDrive) { & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action MapProjects }

@@ -26,7 +26,7 @@ def main():
     STATE.mkdir(mode=0o700,exist_ok=True)
     guest.STATE=STATE
     creds=guest.credentials()
-    data=guest.render(creds)
+    data=guest.render(creds, session_ttl="168h")
     for provider in guest.PROVIDERS:
         del data["services"][provider],data["networks"][provider],data["volumes"][provider+"-home"]
     backend=data["services"]["backend"]

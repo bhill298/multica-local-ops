@@ -3,6 +3,7 @@ import json
 import argparse
 import os
 from pathlib import Path
+import re
 import secrets
 import subprocess
 import sys
@@ -52,14 +53,22 @@ def api(path, token=None, body=None, base="http://127.0.0.1:43131"):
         return json.loads(response.read() or b"null")
 
 
-def credentials():
+def credentials(*, initial_email=None, initial_code=None):
     path = STATE / "credentials.json"
+    if initial_code is not None and not re.fullmatch(r"[0-9]{6}", initial_code):
+        raise ValueError("The dashboard verification code must be six digits.")
     if not path.exists():
         temp = path.with_suffix(".new")
-        temp.write_text(json.dumps({"password": secrets.token_hex(32), "jwt": secrets.token_hex(48),
-                                    "code": f"{secrets.randbelow(1_000_000):06d}"}))
+        new = {"password": secrets.token_hex(32), "jwt": secrets.token_hex(48),
+               "code": initial_code or f"{secrets.randbelow(1_000_000):06d}"}
+        if initial_email is not None:
+            new["email"] = initial_email
+        temp.write_text(json.dumps(new))
         temp.replace(path)
-    return json.loads(path.read_text())
+    saved = json.loads(path.read_text())
+    if initial_code is not None and saved["code"] != initial_code:
+        raise ValueError("This VM already has a dashboard code. Omit the initial-code option to keep it.")
+    return saved
 
 
 def kvm_group():
@@ -80,7 +89,7 @@ def kvm_group():
     return str(device.stat().st_gid)
 
 
-def render(creds, kvm_gid=None):
+def render(creds, kvm_gid=None, *, session_ttl=None):
     images = SETTINGS["images"]
     database = {"image": images["postgres"], "environment": {"POSTGRES_DB": "multica",
                 "POSTGRES_USER": "multica", "POSTGRES_PASSWORD": creds["password"]},
@@ -92,8 +101,8 @@ def render(creds, kvm_gid=None):
                "volumes": ["uploads:/app/data/uploads"], "environment": {
                "DATABASE_URL": "postgres://multica:" + creds["password"] + "@postgres:5432/multica?sslmode=disable",
                "JWT_SECRET": creds["jwt"], "PORT":"8080","APP_ENV":"development",
-               "AUTH_TOKEN_TTL":"168h","MULTICA_DEV_VERIFICATION_CODE":creds["code"],
-               "ALLOWED_EMAILS":SETTINGS["email"],"ALLOW_SIGNUP":"true","DO_NOT_TRACK":"1",
+               "AUTH_TOKEN_TTL":session_ttl or SETTINGS["auth"]["token_ttl"],"MULTICA_DEV_VERIFICATION_CODE":creds["code"],
+               "ALLOWED_EMAILS":creds.get("email", SETTINGS["email"]),"ALLOW_SIGNUP":"true","DO_NOT_TRACK":"1",
                "MULTICA_APP_URL":ui,"FRONTEND_ORIGIN":ui,"CORS_ALLOWED_ORIGINS":ui}}
     frontend = {"image":images["frontend"], "networks":["web"], "ports":[f"127.0.0.1:{PORT}:3000"],
                 "environment":{"REMOTE_API_URL":"http://backend:8080","HOSTNAME":"0.0.0.0","NEXT_PUBLIC_API_URL":"","NEXT_PUBLIC_WS_URL":""}}
@@ -128,7 +137,7 @@ def cli(provider, *args, **kwargs):
 
 
 def enroll(creds):
-    email=SETTINGS["email"]
+    email=creds.get("email", SETTINGS["email"])
     for i in range(90):
         try:
             api("/auth/send-code",body={"email":email})
@@ -193,7 +202,7 @@ def create_team(workspace):
     (STATE/"team.json").write_text(json.dumps(team))
 
 
-def provision(kvm=False):
+def provision(kvm=False, initial_code=None):
     os.umask(0o077)
     STATE.mkdir(mode=0o700,exist_ok=True)
     pins_path = STATE / "release-pins.json"
@@ -203,7 +212,7 @@ def provision(kvm=False):
         with tempfile.NamedTemporaryFile(mode="w", dir=STATE, delete=False) as fp:
             json.dump(pins, fp)
         os.replace(fp.name, pins_path)
-    creds=credentials()
+    creds=credentials(initial_email=SETTINGS["vm_login_email"], initial_code=initial_code)
     Path("/etc/apt/apt.conf.d/52multica-local-updates").write_text(
         'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n'
         'Unattended-Upgrade::Automatic-Reboot "true";\nUnattended-Upgrade::Automatic-Reboot-Time "04:00";\n')
@@ -238,4 +247,6 @@ if __name__=="__main__":
     if os.geteuid()!=0: sys.exit("Run the guest provisioner with sudo.")
     parser = argparse.ArgumentParser()
     parser.add_argument("--kvm", choices=("on","off"), default="off")
-    provision(kvm=parser.parse_args().kvm == "on")
+    parser.add_argument("--initial-code-stdin", action="store_true")
+    args = parser.parse_args()
+    provision(kvm=args.kvm == "on", initial_code=sys.stdin.readline().rstrip("\r\n") if args.initial_code_stdin else None)

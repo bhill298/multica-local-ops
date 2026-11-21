@@ -54,7 +54,21 @@ Run these commands from the repository root:
 ./new-goal.ps1 -HyperV -Title 'Project goal' -OutcomeFile ./outcome.txt
 ```
 
-Use the email in `config/settings.json` and the generated guest login code.
+New VMs use `vm_login_email` from `config/settings.json` (currently
+`a@a.com`) and generate a six-digit code. To choose your own code on first
+install, run `./install-vm.ps1 -PromptForLoginCode`. The prompt masks your
+input and passes it over SSH. Existing VMs keep their saved email and code
+on reprovision. Older installations without a saved email use the original
+`email` setting. The full-access admin dashboard has its own code and uses
+the original email setting.
+
+Daily browser sessions use the configured `auth.token_ttl` of 87,600 hours
+(3,650 days). In the Edge login test the auth cookie expired after 400 days
+and the web app's login marker after 365 days. Clearing cookies also ends
+browser access. The manual admin dashboard uses a seven-day server lifetime.
+Anyone who can reach the daily API and knows its email and fixed code can
+sign in as the daily owner. Keep the dashboard on the loopback SSH relay.
+
 Each provider has its own persistent home. Codex powers the six-person team.
 Claude and Agy have their own worker agents. Agy is configured for Gemini
 3.8 Flash Low. The owner dashboard code, JWT and database password live in

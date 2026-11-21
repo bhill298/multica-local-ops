@@ -3,7 +3,8 @@
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
     [ValidateSet('Provision','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
-    [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130)
+    [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
+    [switch]$PromptForLoginCode)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
@@ -28,7 +29,15 @@ switch ($Action) {
             $policy="$env:ProgramFiles/MulticaVM/$Name/kvm.json"
             $kvm='off'
             if ((Test-Path $policy) -and (Get-Content $policy -Raw | ConvertFrom-Json).enabled) { $kvm='on' }
-            ssh @opts $target "set -eu; sudo install -d -m 755 /opt/multica-local; sudo tar -xf setup.tar --no-same-owner -C /opt/multica-local; rm setup.tar; sudo bash /opt/multica-local/linux-guest/setup-packages.sh --install; sudo systemctl enable --now docker; sudo python3 /opt/multica-local/hyperv/guest.py --kvm $kvm"
+            ssh @opts $target 'set -eu; sudo install -d -m 755 /opt/multica-local; sudo tar -xf setup.tar --no-same-owner -C /opt/multica-local; rm setup.tar; sudo bash /opt/multica-local/linux-guest/setup-packages.sh --install; sudo systemctl enable --now docker'
+            $provision="sudo python3 /opt/multica-local/hyperv/guest.py --kvm $kvm"
+            if ($PromptForLoginCode) {
+                $code=Read-Host 'Initial daily dashboard code (six digits)' -MaskInput
+                if ($code -cnotmatch '^[0-9]{6}$') { throw 'Enter a six-digit code.' }
+                $code | ssh @opts $target "$provision --initial-code-stdin"
+            } else {
+                ssh @opts $target $provision
+            }
         } finally { if (Test-Path $archive) { Remove-Item -LiteralPath $archive } }
     }
     Status { ssh @opts $target "$compose ps" }

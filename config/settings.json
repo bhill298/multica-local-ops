@@ -3,6 +3,7 @@
   "upstream_commit": "dbdbb299164347586e2650bb67684a490726a798",
   "profile": "orchestration-trial-20261024",
   "email": "orchestration-trial@example.test",
+  "vm_login_email": "a@a.com",
   "frontend_port": 43130,
   "backend_port": 43131,
   "compose_project": "multica-local",
