@@ -1,0 +1,19 @@
+[Unit]
+Description=Multica VM administrator (full Ubuntu access)
+Requires=docker.service
+After=docker.service network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+User=multica-vm-admin
+WorkingDirectory=/home/multica-vm-admin
+Environment=HOME=/home/multica-vm-admin
+Environment=PATH=/opt/multica-owner-bin:/usr/bin:/bin
+Environment=MULTICA_SERVER_URL=http://127.0.0.1:43231
+Environment='MULTICA_CODEX_ARGS=-c approval_policy="never" -c sandbox_mode="danger-full-access"'
+ExecStart=/opt/multica-owner-bin/multica daemon start --foreground --no-auto-update --no-auto-reload
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -5,7 +5,8 @@ latest stable upstream release. This also checks whether GitHub Container
 Registry has published both images. To review an exact release, use
 `./update-vm.ps1 -Version v0.11.1`.
 
-Close the owner-only admin stack and finish queued or running jobs. Pick a
+Finish queued or running jobs in both workspaces. Run
+`./hyperv/Connect-Guest.ps1 -Action AdminStop` to pause the admin plane. Pick a
 maintenance window when nobody will submit work or edit the project drive.
 Open PowerShell 7 as administrator under the same Windows account you used
 for setup. Run the exact command printed by the plan, for example:
@@ -27,7 +28,9 @@ After export, the script stops incoming requests, checks the queue again,
 stops the workers and brings up the selected release. The backend performs
 its database migrations. The final checks open the dashboard, look up the
 existing team by ID, and check the three online runtimes and their CLI access.
-The admin plane stays offline and picks up the release on its next manual start.
+After the upgrade, run `./hyperv/Connect-Guest.ps1 -Action Admin` to update
+the admin plane and re-enable its automatic startup. Do the same after
+restoring an update checkpoint taken while the admin plane was paused.
 Try a small real task with the providers you rely on after an upgrade.
 
 **Keep the backup ID printed by the script.** Under

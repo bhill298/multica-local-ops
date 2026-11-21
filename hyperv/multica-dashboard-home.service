@@ -1,0 +1,11 @@
+[Unit]
+Description=Local Multica dashboard links
+
+[Service]
+DynamicUser=yes
+NoNewPrivileges=yes
+ExecStart=/usr/bin/python3 -B /opt/multica-local/hyperv/dashboard_home.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

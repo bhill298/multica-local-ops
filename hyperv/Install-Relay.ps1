@@ -17,6 +17,20 @@ $action=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/wscript.exe" 
 $principal=New-ScheduledTaskPrincipal -UserId $user -RunLevel Limited -LogonType Interactive
 $trigger=New-ScheduledTaskTrigger -AtLogon -User $user
 $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+if ((Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue).State -eq 'Running') {
+    Stop-ScheduledTask -TaskName $taskName
+}
+# Task Scheduler can stop wscript while leaving its OpenSSH child bound.
+$client="$env:SystemRoot/System32/OpenSSH/ssh.exe"
+foreach ($child in Get-CimInstance Win32_Process -Filter "Name='ssh.exe'") {
+    $cmdline=$child.CommandLine
+    if ($child.ExecutablePath -eq ([IO.Path]::GetFullPath($client)) -and $cmdline -and
+        $cmdline.Contains("HostKeyAlias=$Name ") -and $cmdline.Contains("$profileDir/keys/operator") -and
+        $cmdline.Contains(' -NT ') -and $cmdline.Contains(' -L 127.0.0.1:43130:127.0.0.1:4313') -and
+        $cmdline -match ' multicaops@[0-9.]+$') {
+        Stop-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
+    }
+}
 Register-ScheduledTask -TaskName $taskName -Trigger $trigger -Action $action -Principal $principal -Settings $settings -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
 $mapTask="$Name project drive"

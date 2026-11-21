@@ -12,7 +12,9 @@ their post-cleanup checks. The inventory and sequence below record what was
 retired and how to reproduce that transition on another installation.
 
 The November 20 post-reboot inventory found **two independent deployments**.
-The VM owns the current dashboard on Windows loopback port 43130 through SSH.
+The VM serves the dashboard landing page on Windows loopback port 43130
+through SSH. The same relay forwards the daily and admin dashboards on
+ports 43133 and 43230.
 Docker Desktop still served the old native API on 43131. The old Windows
 daemon was running with zero active tasks. Its default workspace had six idle
 agents; the old database also contained one unarchived lab agent and 61

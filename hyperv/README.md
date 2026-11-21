@@ -38,10 +38,11 @@ database dumps, or checkpoints.
 
 ## Daily use
 
-Open **http://localhost:43130** in Windows. The limited Windows logon task
-forwards the UI over SSH. The VM, Docker, services and workers start at host
-boot via a separate SYSTEM task. Docker Desktop is used for media preparation
-only. Set aside port 43130 for this dashboard when running other installations.
+Open **http://localhost:43130** in Windows and choose a dashboard. The Windows
+logon task forwards three loopback ports over one SSH connection. The VM starts
+at host boot via a separate SYSTEM task. Ubuntu starts Docker, both Multica
+instances, their workers, and the small landing page. Docker Desktop is used
+for media preparation only. Reserve Windows ports 43130, 43133 and 43230.
 
 Run these commands from the repository root:
 
@@ -58,15 +59,19 @@ Run these commands from the repository root:
 
 | Dashboard | Windows URL | Default email | Default PIN | When to use it |
 | --- | --- | --- | --- | --- |
-| Daily | http://localhost:43130 | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
-| VM admin | http://localhost:43230 | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. Start the admin worker and tunnel manually. |
+| Daily | http://localhost:43130/user | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
+| VM admin | http://localhost:43130/admin | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. The admin worker can use sudo. |
+
+The two links redirect to `http://localhost:43133` and
+`http://127.0.0.1:43230`. The different hostnames keep the two browser
+sessions separate. The landing page serves only links and redirects.
 
 Open the URL, enter the email, request a verification code, then enter the PIN.
 No email is sent. Both accounts own their respective Multica workspaces. The
 admin worker has passwordless sudo on Ubuntu, including control over Docker and
 the daily workers. It has a separate API, database and queue so a daily
-worker's owner token cannot submit a job that will run as root when you next
-start the admin worker. Both URLs use loopback SSH tunnels. The PIN is public
+worker's owner token cannot submit a root-level job in the admin workspace.
+Both URLs use loopback SSH tunnels. The PIN is public
 and anyone with access to an open admin tunnel can use it.
 
 The installer prints a quick start with the installed login addresses.
@@ -79,9 +84,8 @@ that clears or expires its cookies can ask you to sign in sooner.
 **Choose different credentials on a fresh install.** Edit `vm_login_email` and
 `vm_admin_login_email` in [settings.json](../config/settings.json). The shared
 development default is `vm_default_login_code`. For private, per-account PINs,
-run `./install-vm.ps1 -PromptForLoginCode` for daily setup and
-`./hyperv/Connect-Guest.ps1 -Action AdminAuth -PromptForLoginCode` on first
-admin setup. Both prompts accept six digits. Reprovisioning preserves saved
+run `./install-vm.ps1 -PromptForLoginCode` on first setup. It prompts for
+both six-digit PINs. Reprovisioning preserves saved
 credentials, including the original `email` on older VMs. For a saved PIN,
 run the helper with `-Action LoginCode` or `-Action AdminCode`.
 
@@ -120,16 +124,50 @@ are `-Action Put -Path <input>`,
 
 ## VM administrator
 
-Use `-Action AdminAuth` for its separate provider login, then `-Action Admin`
-to start **VM ADMIN — FULL ROOT ACCESS TO UBUNTU VM — MANUAL START**.
-Open the owner-only dashboard via `-Action AdminUI` and localhost:43230.
-Use `-Action AdminCode` for its separate login. The administrator runs directly
-on Ubuntu with passwordless sudo. A separate database, API and queue keep
-ordinary agents from assigning it work. It starts manually through operator
-SSH. The transient service has a one-hour maximum runtime. `-Action AdminStop`
-stops the daemon and the admin API/UI/database containers. They do not start
-at boot. Root work can change anything in the guest, including future boot
-behavior. Stop an admin session before making routine recovery checkpoints.
+**VM Admin — Full root access to Ubuntu** is a private, single-task Codex
+agent. It can administer the VM and Docker. Its instructions ask it to inspect
+current state, perform requested changes, verify results and preserve the two
+workspaces. Setup adds no recurring maintenance jobs. Its daemon runs under
+`multica-vm-admin.service` with passwordless sudo, starts at Ubuntu boot, and
+restarts after a crash. A queued job can execute unattended.
+
+For maintenance, `./hyperv/Connect-Guest.ps1 -Action AdminStop` stops the
+admin containers and disables the admin worker. Use `-Action Admin` afterward
+to bring them back and restore automatic startup. Daily work stays online.
+
+### Sign in or renew a provider from Windows
+
+Run `./hyperv/Connect-Guest.ps1 -Action Auth -Provider codex` to sign in
+once with ChatGPT in the admin profile. The helper copies only that provider's
+login to the daily Codex container over an in-guest pipe. It replaces the
+daily provider login. Windows never handles the token. The two Multica tokens,
+home directories, instructions and conversation histories stay separate.
+With an already valid admin login, `-Action SyncCodexAuth` copies it without
+another browser sign-in. Codex can refresh its local cache independently in
+each profile, so a one-time copy can diverge. If renewal fails, repeat the
+sign-in command. For independent logins use `-Action AdminAuth` and
+`-Action Auth -Provider codex -DailyOnly`. [Codex authentication](https://developers.openai.com/codex/auth)
+
+For Claude or Agy use `-Action Auth -Provider claude` or
+`-Action Auth -Provider agy` from Windows. Each opens that provider's own
+login in its daily worker. These commands also work after a session expires.
+
+### Automatic startup test, November 20, 2026
+
+Two Ubuntu reboots changed the guest address. Windows found the new address
+and restored all three forwards without operator intervention. Both databases
+and dashboards returned, the daily instance listed its three provider runtimes,
+and the admin instance listed only its own Codex runtime. In one fresh Edge
+profile, both dashboard links signed in and showed their respective workspace.
+The daily containers could not connect to the admin web or API ports on the
+guest interface or their Docker gateways.
+
+The first real admin job exposed a missing `codex-code-mode-host` executable.
+Setup now installs it alongside Codex from the same pinned image. After the
+second reboot, the admin agent reported the correct new Linux boot ID,
+confirmed the worker and landing services were active, and obtained UID 0
+from `sudo -n id -u`. This test restarted Ubuntu; the physical Windows reboot
+test below was on an older setup.
 
 ## Boot, isolation and recovery
 

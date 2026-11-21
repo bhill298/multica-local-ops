@@ -15,8 +15,10 @@ Already running the Ubuntu VM? Run `./update-vm.ps1` to check for a Multica
 release. See [update, restore and backup cleanup](docs/update-multica.md).
 
 For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
-and follow the [VM operating guide](hyperv/README.md). Setup prints the two
-local dashboard URLs, accounts and sign-in steps. Run
+and follow the [VM operating guide](hyperv/README.md). Open
+[Multica dashboards](http://localhost:43130) from Windows. Both instances and
+the Ubuntu admin worker start on boot. Setup prints the dashboard links,
+accounts and Windows provider sign-in commands. Run
 `./hyperv/Connect-Guest.ps1 -Action QuickStart` to see them again.
 See [dashboard credentials and multi-user setup](hyperv/README.md#dashboard-accounts)
 for the defaults and how to change them. See the [Ubuntu upgrade

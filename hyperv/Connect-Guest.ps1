@@ -1,10 +1,10 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
-    [switch]$PromptForLoginCode)
+    [switch]$PromptForLoginCode,[switch]$DailyOnly)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
@@ -38,6 +38,14 @@ switch ($Action) {
             } else {
                 ssh @opts $target $provision
             }
+            $adminSetup='sudo python3 /opt/multica-local/hyperv/admin.py'
+            if ($PromptForLoginCode) {
+                $code=Read-Host 'Initial admin dashboard code (six digits)' -MaskInput
+                if ($code -cnotmatch '^[0-9]{6}$') { throw 'Enter a six-digit code.' }
+                $code | ssh @opts $target "$adminSetup --initial-code-stdin"
+            } else {
+                ssh @opts $target $adminSetup
+            }
         } finally { if (Test-Path $archive) { Remove-Item -LiteralPath $archive } }
     }
     Status { ssh @opts $target "$compose ps" }
@@ -53,33 +61,35 @@ switch ($Action) {
         @"
 
 Multica quick start
+Open http://localhost:43130 in Windows and choose a workspace.
 
-Daily dashboard    http://localhost:43130
+Daily dashboard    http://localhost:43130/user
 Email              $($logins.daily.email)
 PIN                $dailyPin
 Open the dashboard, enter the email, request a code, then enter the PIN.
-For a new worker, sign in to its model provider once. Use codex, claude or agy:
+Sign in or renew a provider from Windows. Codex signs in once for both workers:
   $helper -Action Auth -Provider codex
+  $helper -Action Auth -Provider claude
+  $helper -Action Auth -Provider agy
 
-VM admin dashboard http://localhost:43230  (manual start, full Ubuntu access)
+VM admin dashboard http://localhost:43130/admin  (full Ubuntu access)
 Email              $($logins.admin.email)
 PIN                $adminPin
-Run these from the repo in PowerShell:
-  $helper -Action AdminAuth    # first use, for the admin worker's provider
-  $helper -Action Admin
-  $helper -Action AdminUI
-Leave the tunnel open and sign in at the admin URL. When finished, press Ctrl+C
-in the tunnel window, then run:
-  $helper -Action AdminStop
+Both instances and the VM admin worker start with Ubuntu.
 "@
     }
     Goal { $Goal | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/new-goal.py' }
     MapProjects { & "$PSScriptRoot/Map-Projects.ps1" -Name $Name -Directory $Directory }
     Shell { ssh @opts -t $target }
     Auth {
+        if ($Provider -eq 'codex' -and !$DailyOnly) {
+            ssh @opts -t $target 'sudo bash /opt/multica-local/hyperv/codex-auth.sh login'
+            return
+        }
         $authCmd=@{codex='codex login --device-auth';claude='claude auth login --claudeai';agy='agy --model gemini-3.8-flash-low'}[$Provider]
         ssh @opts -t $target "$compose exec $Provider $authCmd"
     }
+    SyncCodexAuth { ssh @opts $target 'sudo bash /opt/multica-local/hyperv/codex-auth.sh copy' }
     { $_ -in 'Put','PutExchange' } {
         $source=(Resolve-Path -LiteralPath $Path).Path
         $folder=if ($Action -eq 'Put') {'input'} else {'exchange'}
@@ -90,9 +100,14 @@ in the tunnel window, then run:
         scp @opts -r "${target}:/srv/multica/project/exchange/." $Path
     }
     { $_ -in 'UI','AdminUI' } {
+        if (!$PSBoundParameters.ContainsKey('LocalPort')) {
+            $pathName=if ($Action -eq 'AdminUI') { 'admin' } else { 'user' }
+            Write-Output "Open http://localhost:43130/$pathName"
+            return
+        }
         $remotePort=if ($Action -eq 'AdminUI') {43230} else {43130}
-        if (!$PSBoundParameters.ContainsKey('LocalPort')) { $LocalPort=$remotePort }
-        Write-Host "Open http://localhost:$LocalPort while this tunnel is running."
+        $browserHost=if ($Action -eq 'AdminUI') { '127.0.0.1' } else { 'localhost' }
+        Write-Host "Open http://${browserHost}:$LocalPort while this tunnel is running."
         ssh @opts -o ExitOnForwardFailure=yes -N -L "127.0.0.1:${LocalPort}:127.0.0.1:$remotePort" $target
     }
     { $_ -in 'LoginCode','AdminCode' } {

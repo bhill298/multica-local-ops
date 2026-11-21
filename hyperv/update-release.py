@@ -42,7 +42,7 @@ def current():
 def idle():
     if output("docker", "ps", "-q", "--filter", "label=com.docker.compose.project=multica-owner-only"):
         raise RuntimeError("Close the owner-only admin stack with AdminStop first.")
-    if subprocess.run(["systemctl", "is-active", "--quiet", "multica-manual-admin.service"]).returncode == 0:
+    if subprocess.run(["systemctl", "is-active", "--quiet", "multica-vm-admin.service"]).returncode == 0:
         raise RuntimeError("The guest administrator is running.")
     sql = "select count(*) from agent_task_queue where status not in ('completed','failed','cancelled')"
     if output(*COMPOSE, "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",

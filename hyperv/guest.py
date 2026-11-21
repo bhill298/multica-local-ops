@@ -96,7 +96,7 @@ def render(creds, kvm_gid=None):
                 "POSTGRES_USER": "multica", "POSTGRES_PASSWORD": creds["password"]},
                 "volumes": ["database:/var/lib/postgresql/data"], "networks": ["database"],
                 "healthcheck": {"test": ["CMD", "pg_isready", "-U", "multica"], "interval": "5s", "timeout": "5s", "retries": 30}}
-    ui = f"http://localhost:{PORT}"
+    ui = "http://localhost:43133"
     backend = {"image": images["backend"], "depends_on": {"postgres": {"condition": "service_healthy"}},
                "ports": ["127.0.0.1:43131:8080"], "networks": ["database","web",*PROVIDERS],
                "volumes": ["uploads:/app/data/uploads"], "environment": {

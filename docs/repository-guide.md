@@ -66,7 +66,10 @@ backups separately before deleting `tmp`. The Office source and relevant narrati
 notes no longer depend on retaining the old trial directories. Its generated
 configuration must be regenerated if the repository is moved.
 
-## Live layout on the tested machine
+## Historical native Windows layout
+
+The table below records the retired native pilot. The current VM deployment
+and its dashboard entry points are in the [VM operating guide](../hyperv/README.md).
 
 | Location | Purpose |
 | --- | --- |
