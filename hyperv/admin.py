@@ -48,10 +48,11 @@ def bind_admin(workspace, provider, model):
                                    capture_output=True,text=True).stdout)
     for _ in range(60):
         try:
-            daemon_id=cli("daemon","status")["daemon_id"]
-            runtime=next((r for r in cli("runtime","list") if r["daemon_id"]==daemon_id
-                          and r["provider"]==provider_tools.PROVIDERS[provider] and r["status"]=="online"),None)
-            if runtime: break
+            daemon_id=cli("daemon","status").get("daemon_id")
+            if daemon_id:
+                runtime=next((r for r in cli("runtime","list") if r["daemon_id"]==daemon_id
+                              and r["provider"]==provider_tools.PROVIDERS[provider] and r["status"]=="online"),None)
+                if runtime: break
         except subprocess.CalledProcessError:
             pass  # The local daemon is still starting.
         time.sleep(2)
@@ -107,7 +108,7 @@ def main():
     backend["networks"]=["database","web"]
     backend["ports"]=["127.0.0.1:43231:8080"]
     for name in ["MULTICA_APP_URL","FRONTEND_ORIGIN","CORS_ALLOWED_ORIGINS"]:
-        backend["environment"][name]="http://127.0.0.1:43230"
+        backend["environment"][name]=f"http://127.0.0.1:{guest.PORTS['admin']}"
     data["services"]["frontend"]["ports"]=["127.0.0.1:43230:3000"]
     cfg=STATE/"compose.json"
     cfg.write_text(json.dumps(data))
@@ -160,6 +161,8 @@ def main():
         provider_tools.login(provider,model)
         return
     configure_runtime(ws["id"],provider,model,explicit,reset)
+    # Reload the link destinations when an existing installation changes ports.
+    guest.run("systemctl","restart","multica-dashboard-home.service")
 
 
 def configure_runtime(workspace, provider, model, explicit, reset):
@@ -203,7 +206,7 @@ def configure_runtime(workspace, provider, model, explicit, reset):
             else: write_atomic(envfile,previous)
             if int(pid or 0): guest.run("systemctl","restart",unit)
         raise
-    print(f"VM administrator online using {provider} / {model}. Open http://localhost:43130/admin on Windows.")
+    print(f"VM administrator online using {provider} / {model}. Open http://localhost:{guest.PORTS['home']}/admin on Windows.")
 
 
 if __name__=="__main__":

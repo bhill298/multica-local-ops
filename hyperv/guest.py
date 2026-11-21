@@ -12,6 +12,7 @@ import time
 import urllib.request
 import urllib.error
 from share import configure as configure_share
+from dashboard_ports import PORTS
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = Path("/var/lib/multica-local")
@@ -96,7 +97,7 @@ def render(creds, kvm_gid=None):
                 "POSTGRES_USER": "multica", "POSTGRES_PASSWORD": creds["password"]},
                 "volumes": ["database:/var/lib/postgresql/data"], "networks": ["database"],
                 "healthcheck": {"test": ["CMD", "pg_isready", "-U", "multica"], "interval": "5s", "timeout": "5s", "retries": 30}}
-    ui = "http://localhost:43133"
+    ui = f"http://localhost:{PORTS['daily']}"
     backend = {"image": images["backend"], "depends_on": {"postgres": {"condition": "service_healthy"}},
                "ports": ["127.0.0.1:43131:8080"], "networks": ["database","web",*PROVIDERS],
                "volumes": ["uploads:/app/data/uploads"], "environment": {

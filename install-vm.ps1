@@ -14,6 +14,10 @@ foreach ($command in 'docker','ssh','scp','ssh-keygen','tar','Get-VM') {
 }
 if ((Get-Service vmms -ErrorAction SilentlyContinue).Status -ne 'Running') { throw 'Enable Hyper-V with management tools, enable firmware virtualization and restart Windows.' }
 if ([GC]::GetGCMemoryInfo().TotalAvailableMemoryBytes -lt 15GB) { throw 'This deployment needs a host with at least 16 GiB RAM.' }
+$null=& "$PSScriptRoot/hyperv/Get-InstallPorts.ps1" -Name $Name -Directory $Directory
+$profileDir=Split-Path ([IO.Path]::GetFullPath($Directory))
+$null=New-Item -ItemType Directory -Force -Path $profileDir
+Set-Content -LiteralPath (Join-Path $profileDir 'vm-name.txt') -Value $Name
 & "$PSScriptRoot/hyperv/Prepare-Media.ps1" -Directory $Directory -SourceIso $SourceIso
 $media=(Resolve-Path "$Directory/installer.iso").Path
 $hostScript=(Resolve-Path "$PSScriptRoot/hyperv/Install-Host.ps1").Path

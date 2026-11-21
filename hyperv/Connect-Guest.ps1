@@ -12,6 +12,12 @@ if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
 $state=Get-Content "$env:ProgramFiles/MulticaVM/$Name/vm.json" -Raw | ConvertFrom-Json
 if ($state.phase -ne 'installed') { throw 'VM installation is incomplete. Inspect the provisioning log.' }
 $operatorDir=Split-Path ([IO.Path]::GetFullPath($Directory))
+$homePort=(Get-Content "$PSScriptRoot/dashboard-ports.json" -Raw | ConvertFrom-Json).home
+$relayConfig=Join-Path $operatorDir 'relay/relay.json'
+if (Test-Path -LiteralPath $relayConfig) {
+    $installedRelay=Get-Content -LiteralPath $relayConfig -Raw | ConvertFrom-Json
+    if ($installedRelay.name -eq $Name) { $homePort=if ($installedRelay.ports) { $installedRelay.ports.home } else { 43130 } }
+}
 $key=Join-Path $operatorDir keys/operator
 $known=Join-Path $operatorDir known_hosts
 $address=if ($GuestAddress) { $GuestAddress.IPAddressToString } else { $state.address }
@@ -68,9 +74,9 @@ switch ($Action) {
         @"
 
 Multica quick start
-Open http://localhost:43130 in Windows and choose a workspace.
+Open http://localhost:$homePort in Windows and choose a workspace.
 
-Daily dashboard    http://localhost:43130/user
+Daily dashboard    http://localhost:$homePort/user
 Email              $($logins.daily.email)
 PIN                $dailyPin
 Open the dashboard, enter the email, request a code, then enter the PIN.
@@ -79,7 +85,7 @@ Sign in or renew each provider once for its admin and daily workers:
   $helper -Action Auth -Provider claude
   $helper -Action Auth -Provider agy
 
-VM admin dashboard http://localhost:43130/admin  (full Ubuntu access)
+VM admin dashboard http://localhost:$homePort/admin  (full Ubuntu access)
 Worker             $($logins.admin.provider) / $($logins.admin.model)
 Email              $($logins.admin.email)
 PIN                $adminPin
@@ -118,7 +124,7 @@ To reuse a current admin login without a browser prompt, for example:
     { $_ -in 'UI','AdminUI' } {
         if (!$PSBoundParameters.ContainsKey('LocalPort')) {
             $pathName=if ($Action -eq 'AdminUI') { 'admin' } else { 'user' }
-            Write-Output "Open http://localhost:43130/$pathName"
+            Write-Output "Open http://localhost:$homePort/$pathName"
             return
         }
         $remotePort=if ($Action -eq 'AdminUI') {43230} else {43130}

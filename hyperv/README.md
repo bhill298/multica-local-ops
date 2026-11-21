@@ -40,6 +40,73 @@ Installation can download several gigabytes. First-time provider logins are
 interactive. Never commit private keys, generated media, runtime credentials,
 database dumps, or checkpoints.
 
+### Blank-disk test, November 20, 2026
+
+We started with pushed commit `89e9168` and kept the existing VM running.
+The test used its own operator key, verified Ubuntu 26.04.1 ISO, new 64 GiB
+disks, Windows ports and project drive. Two issues showed up before the final
+clean pass:
+
+* On first boot, the admin daemon briefly reported its status without a daemon
+  ID. Setup now waits for the ID and an online runtime before binding the agent.
+* Windows had reserved the first set of test ports. They had no listeners,
+  but OpenSSH still could not bind them. Setup now checks each port before
+  preparing the media and checks both redirects through the scheduled relay
+  before printing the quick start.
+
+With those changes, the installer ran unattended from a new blank disk through
+the Windows quick start. Both daemons reported Multica 0.11.1. The daily
+workspace had its eight default agents and three online provider runtimes.
+The separate admin workspace had its Codex worker. In a fresh Edge profile,
+both default PIN logins worked at the same time and each account saw only its
+own workspace. The test drive used Y: alongside the existing Z: drive.
+
+Each queue completed a job through its real Codex daemon, using a loopback
+test server in place of a paid model. On the preceding run we also switched
+the admin worker to Claude, Agy (Gemini 3.8 Flash Low), and back to Codex.
+Its agent ID stayed the same. These installs used `-SkipProviderLogin`.
+The browser sign-ins above were for Multica itself. The tests of real
+provider accounts are documented under [VM administrator](#vm-administrator).
+
+We wrote a file from Windows and read it in all three containers, then read
+a worker's reply from Windows. Even container root received a read-only
+filesystem error on the input mount. Each worker could open `/dev/kvm`
+and query its API. The three daily control-plane containers had no KVM
+device. The Codex worker could reach neither of two test listeners on the
+Windows host (the virtual gateway and the host's LAN address). Both listeners
+worked with a temporary allow rule, then became unreachable when we removed it.
+
+Restoring a Hyper-V production checkpoint brought back the earlier file
+contents and one database row. The later file edit and second row disappeared.
+Ubuntu had a new boot ID. The Windows relay reconnected automatically, both
+browser logins worked, and each queue completed another job. The project
+drive still worked in both directions. This run rebooted the guest only.
+
+Afterward we removed the test VMs, disks, checkpoints, scheduled tasks,
+drive mapping, media builder, ISOs and private operator files. The original
+VM kept its ID, all three original web endpoints returned HTTP 200 and its
+Z: project drive was accessible.
+
+### Run a second installation on the same Windows host
+
+Use a separate checkout. In that checkout, set three free Windows loopback
+ports in `hyperv/dashboard-ports.json`, for example
+`{"home":41130,"daily":41133,"admin":41230}`. Windows can reserve a port
+even when no process is listening. Setup checks that it can bind each port,
+or that this VM's existing SSH relay already owns it. Give the VM its own name
+and operator directory:
+
+```powershell
+./install-vm.ps1 -Name Multica-Test -Directory "$env:LOCALAPPDATA/Multica-Test/media"
+```
+
+Keep the entire parent of `media` separate. It holds the SSH key, known
+hosts, dashboard relay and drive mapping for one VM. Use the same name and
+directory with `Connect-Guest.ps1`. Setup prints the URLs for this copy
+and picks an available drive letter. Use a separate browser profile when
+signing in to a second installation. A browser shares cookies between ports
+on the same hostname.
+
 ## Daily use
 
 Open **http://localhost:43130** in Windows and choose a dashboard. The Windows
@@ -71,7 +138,9 @@ The two links redirect to `http://localhost:43133` and
 sessions separate. The landing page serves only links and redirects.
 
 Open the URL, enter the email, request a verification code, then enter the PIN.
-No email is sent. Both accounts own their respective Multica workspaces. The
+No email is sent. Setup also requests a code when it enrolls each workspace.
+If the first browser request says to wait, retry after a minute. Both accounts
+own their respective Multica workspaces. The
 admin worker has passwordless sudo on Ubuntu, including control over Docker and
 the daily workers. It has a separate API, database and queue so a daily
 worker's owner token cannot submit a root-level job in the admin workspace.

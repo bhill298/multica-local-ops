@@ -2,10 +2,12 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
+from dashboard_ports import PORTS
 
 
 class DashboardHome(BaseHTTPRequestHandler):
-    destinations = {"/user": "http://localhost:43133/login", "/admin": "http://127.0.0.1:43230/login"}
+    destinations = {"/user": f"http://localhost:{PORTS['daily']}/login",
+                    "/admin": f"http://127.0.0.1:{PORTS['admin']}/login"}
     page = Path(__file__).with_name("dashboard_home.html").read_bytes()
 
     def log_request(self, code="-", size="-"):

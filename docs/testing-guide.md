@@ -6,6 +6,10 @@ comparison, test and intervention reports. Their dates/configurations matter;
 older claims about forks, unrepeated reboot tests or missing provider tests are
 superseded by the current findings.
 
+The [November 20 blank-disk test](../hyperv/README.md#blank-disk-test-november-20-2026)
+covers a fresh Hyper-V install, both dashboard logins, jobs before and after
+a checkpoint restore, network and file boundaries, and cleanup.
+
 ## Local source checks
 
 ```powershell

@@ -14,6 +14,35 @@ try {
         Assert (-not $parseErrors) "Parse error: $($file.Name)"
     }
     $checks++
+    $portsDir=Join-Path $temporary ports
+    $null=New-Item -ItemType Directory -Path $portsDir
+    Copy-Item "$repo/hyperv/Get-InstallPorts.ps1" $portsDir
+    $media=Join-Path $portsDir media
+    $listener=[Net.Sockets.TcpListener]::new([ipaddress]::Loopback,0)
+    $listener.Start()
+    try {
+        $busy=$listener.LocalEndpoint.Port
+        $other=@(44130,44133,44230 | Where-Object { $_ -ne $busy })
+        $settings=@{home=$busy;daily=$other[0];admin=$other[1]}
+        $settings | ConvertTo-Json | Set-Content "$portsDir/dashboard-ports.json"
+        $why=''
+        try { & "$portsDir/Get-InstallPorts.ps1" -Name Test -Directory $media } catch { $why=$_.Exception.Message }
+        Assert ($why -match "port $busy is in use") 'Fresh setup accepted an occupied dashboard port'
+        $null=New-Item -ItemType Directory -Path "$portsDir/relay"
+        @{name='Test';ports=$settings} | ConvertTo-Json | Set-Content "$portsDir/relay/relay.json"
+        $why=''
+        try { & "$portsDir/Get-InstallPorts.ps1" -Name Test -Directory $media } catch { $why=$_.Exception.Message }
+        Assert ($why -match "port $busy is in use") 'An unrelated listener was mistaken for the existing relay'
+        $why=''
+        try { & "$portsDir/Get-InstallPorts.ps1" -Name Second -Directory $media } catch { $why=$_.Exception.Message }
+        Assert ($why -match 'Another VM owns') 'Second VM accepted the existing operator directory'
+        $settings.admin=$busy
+        $settings | ConvertTo-Json | Set-Content "$portsDir/dashboard-ports.json"
+        $why=''
+        try { & "$portsDir/Get-InstallPorts.ps1" -Name Test -Directory $media } catch { $why=$_.Exception.Message }
+        Assert ($why -match 'distinct') 'Accepted duplicate dashboard ports'
+    } finally { $listener.Stop() }
+    $checks++
     $good=Read-Settings (Join-Path $repo 'config/settings.json')
     foreach($change in @(
         @{profile='../other'}, @{frontend_port=80}, @{backend_port=$good.frontend_port},

@@ -45,11 +45,12 @@ class AdminProviderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, patch.object(admin, "STATE", Path(directory)):
             (admin.STATE / "admin-agent-id").write_text("managed")
             updates = []
+            status_reports = iter([{"status": "stopped"}, {"daemon_id": "admin-host"}])
 
             def cli(*args, **kwargs):
                 cmd = args[3:-2]
                 if cmd == ("daemon", "status"):
-                    value = {"daemon_id": "admin-host"}
+                    value = next(status_reports, {"daemon_id": "admin-host"})
                 elif cmd == ("runtime", "list"):
                     value = [{"id": host, "daemon_id": host, "provider": "antigravity", "status": "online"}
                              for host in ("different-host", "admin-host")]
@@ -62,8 +63,10 @@ class AdminProviderTests(unittest.TestCase):
                     self.fail(cmd)
                 return SimpleNamespace(stdout=json.dumps(value))
 
-            with patch.object(admin, "as_agent", side_effect=cli), patch.object(admin, "require_idle") as idle:
+            with patch.object(admin, "as_agent", side_effect=cli), patch.object(admin, "require_idle") as idle, \
+                    patch.object(admin.time, "sleep") as wait:
                 admin.bind_admin("workspace", "agy", "gemini-3.8-flash-low")
+                wait.assert_called_once_with(2)
                 idle.assert_called_once()
                 self.assertEqual(updates, [("agent", "update", "managed", "--runtime-id", "admin-host",
                                             "--model", "gemini-3.8-flash-low")])

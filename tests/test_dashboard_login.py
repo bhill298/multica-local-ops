@@ -11,6 +11,14 @@ from dashboard_logins import describe
 
 
 class DashboardLoginTests(unittest.TestCase):
+    def test_custom_windows_origin_keeps_guest_service_ports(self):
+        with patch.dict(guest.PORTS, home=44130, daily=44133, admin=44230):
+            services = guest.render(dict(password="fixture", jwt="fixture", code="111111"))["services"]
+        env = services["backend"]["environment"]
+        for key in ("MULTICA_APP_URL", "CORS_ALLOWED_ORIGINS", "FRONTEND_ORIGIN"):
+            self.assertEqual(env[key], "http://localhost:44133")
+        self.assertEqual(services["frontend"]["ports"], ["127.0.0.1:43130:3000"])
+
     def test_quick_start_matches_both_fresh_logins_before_and_after_creation(self):
         for email in ("user@localhost", "admin@localhost"):
             with self.subTest(email=email), tempfile.TemporaryDirectory() as directory:
