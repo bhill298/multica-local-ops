@@ -11,7 +11,24 @@ the Pi over HTTPS. The Pi proxies to the Windows portal over HTTP on your
 trusted LAN. The certificate and private key stay on the Pi. You can keep
 using the existing HTTP bookmarks, including when the Pi proxy is offline.
 
-## 1. Request one certificate for the three public DNS names
+## 1. Install acme.sh on the Pi
+
+Use the Linux account that will own the certificate and its renewal job.
+Run the upstream installer once, then check the executable and cron entry:
+
+```bash
+curl -fsSL https://get.acme.sh | sh
+"$HOME/.acme.sh/acme.sh" --version
+crontab -l | grep -F -- '--cron'
+```
+
+The full executable path works in the current shell. If you have already
+installed acme.sh, start with the version and cron checks. If the installer
+reported a missing crontab, install and enable cron on the Pi, then run
+`"$HOME/.acme.sh/acme.sh" --install-cronjob` as the certificate owner.
+[Upstream installation instructions](https://github.com/acmesh-official/acme.sh#1-how-to-install)
+
+## 2. Request one certificate for the three public DNS names
 
 Run these commands on the Pi as the same user who installed acme.sh.
 Leave ddclient running with its existing settings. In Dynu's control panel,
@@ -44,22 +61,67 @@ If Dynu refuses a TXT record, check the API credentials and your account's
 DNS record permissions and quota. [acme.sh Dynu plugin](https://github.com/acmesh-official/acme.sh/wiki/dnsapi#dns_dynu)
 · [Let's Encrypt DNS validation](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge)
 
-## 2. Set up the private route
+## 3. Set up the private route
 
 1. Enable the [Windows portal's LAN listener](../hyperv/README.md#optional-lan-access).
    From the Pi, check that the portal answers. Substitute the Windows LAN
    address in `curl -I -H 'Host: multica.lan' http://192.168.1.50/`.
-2. In Pi-hole's local DNS, point the three **certificate names** at the
+2. In the Pi-hole web interface under **Local DNS Records**, point the three **certificate names** at the
    **Pi's LAN IP**. Keep the three **.lan names** pointing at **Windows**
    for clients using the HTTP portal. The public DDNS address can continue
    pointing to your router. Clients need to use Pi-hole for the local answers.
-3. Use an available HTTPS port on the Pi. The example uses **8443** so it
-   can coexist with Pi-hole's admin page on 443. On an existing Pi-hole
-   host check listeners with `sudo ss -ltnp`. If installing nginx, disable
-   its packaged default site if that site would claim Pi-hole's port 80.
-   Leave Pi-hole's own listener in place.
+3. Check each answer directly. In this and the following commands, replace
+   the example address with the Pi's LAN IP. All three answers should be
+   that address. If a client still gets the public address, check which
+   DNS servers it uses, including any resolver advertised over IPv6.
 
-## 3. Install the certificate and configure nginx
+```bash
+pi_ip=192.168.1.2
+for name in multica multica-user multica-admin; do
+  dig @"$pi_ip" "$name.$zone" A +short
+done
+```
+
+## 4. Install nginx and prepare the site
+
+On Raspberry Pi OS or Debian:
+
+```bash
+sudo apt update && sudo apt install nginx
+sudo ss -ltnp '( sport = :80 or sport = :443 or sport = :8443 )'
+ls -l /etc/nginx/sites-enabled/
+```
+
+Pi-hole can keep ports 80 and 443. This nginx site uses **8443**.
+If nginx reports `address already in use` on port 80, inspect the enabled
+listeners:
+
+```bash
+sudo grep -nE '^[[:space:]]*listen[[:space:]]' /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf
+```
+
+If `sites-enabled/default` is the symlink to the unused packaged
+`sites-available/default` and declares `listen 80` or `listen [::]:80`,
+disable just that link with `sudo unlink /etc/nginx/sites-enabled/default`.
+The packaged file and Pi-hole's web service stay in place.
+
+Copy [multica-https.conf](examples/multica-https.conf) to
+`/etc/nginx/conf.d/multica-https.conf` on the Pi. Before reloading nginx,
+edit these values in the installed copy:
+
+| Template value | Use on your network |
+| --- | --- |
+| Every occurrence of `example.net` | The same Dynu hostname you assigned to `zone`, including in the host map, origin map, `server_name` and redirects |
+| `listen 192.168.1.2:8443 ssl` | The Pi's own LAN IP and an available HTTPS port |
+| `proxy_pass http://192.168.1.50:80` | The Windows PC's LAN IP and portal port (default 80) |
+| `allow 192.168.1.0/24` | The subnet used by your LAN clients |
+| Both paths under `/home/pi/multica-tls/` | Absolute paths to the PEM files installed in the next step |
+
+Keep the three upstream `.lan` names. If you change 8443, update the origin
+map and redirects too. If nginx already sets `map_hash_bucket_size` in
+its `http` configuration, keep one setting large enough for the new names.
+
+## 5. Install the certificate and bring up HTTPS
 
 Run this as the acme.sh user. The nginx master in this example starts as
 root and can read this directory. acme.sh remembers the install paths and
@@ -74,25 +136,58 @@ umask 077
   --reloadcmd 'sudo -n systemctl reload nginx'
 ```
 
-Have nginx installed and running for the reload. The renewal user needs
-passwordless permission for that specific reload command (or omit `sudo -n`
-if acme.sh is running as root). If the service cannot traverse your home
+The install command copies the files and then runs its reload hook. If
+nginx failed to start during package installation, the PEM files can be in
+place even though that first reload failed. After fixing the site, test
+the config and start nginx if necessary:
+
+```bash
+sudo nginx -t && sudo systemctl reload-or-restart nginx
+```
+
+For subsequent edits with nginx running, use `sudo nginx -t && sudo
+systemctl reload nginx`. For unattended renewal, the certificate owner
+needs passwordless permission for the specific reload command (omit
+`sudo -n` if acme.sh runs as root). Test the hook as that user with
+`sudo -k -n systemctl reload nginx` once the site is healthy. If it
+reports that a password is required, configure the narrowly scoped reload
+permission before relying on cron. If the service cannot traverse your home
 directory, use a dedicated protected certificate directory accessible to
 its master and writable by your renewal user. Use the deployed files above
 in nginx. [acme.sh certificate installation and reload](https://github.com/acmesh-official/acme.sh#3-install-the-certificate-to-apachenginx)
 
-Copy [the nginx example](examples/multica-https.conf) into the nginx
-`http` configuration, typically `/etc/nginx/conf.d/multica-https.conf`.
-Replace **every** `example.net`, the example addresses and subnet,
-and both PEM paths. It assumes the default Windows portal port 80. The
-example sets `map_hash_bucket_size` to fit the hostname and origin pairs.
-If your `http` config already sets it, keep one setting large enough for
-the substituted names. The proxy translates the three browser hostnames to the matching portal
-names, including login redirects and the management page's origin check.
+## 6. Verify from a LAN client
 
-```bash
-sudo nginx -t && sudo systemctl reload nginx
+In Windows PowerShell, replace the example zone and run:
+
+```powershell
+$zone = 'example.net'
+curl.exe -I "https://multica.${zone}:8443/"
+curl.exe -I "https://multica.${zone}:8443/admin"
 ```
+
+Expect **200 OK** on the first request and **302 Found** on the second,
+with `Location: https://multica-admin.<your-zone>:8443/login`. These
+checks passed on the live deployment. The daily redirect, both dashboard
+login pages and the management page also responded with normal certificate
+verification. Scheduled renewal and reload have yet to be observed there.
+
+| Symptom seen during setup | What to check |
+| --- | --- |
+| `bind() ...:8443 failed (99: Cannot assign requested address)` | Check `ip -4 addr` on the Pi. Replace the template's listen address with an address assigned to the Pi. |
+| Port 80 already in use | Check the nginx default site in step 4. Leave Pi-hole on port 80. |
+| Windows curl reports `SEC_E_UNTRUSTED_ROOT` | In the live test, curl reached the router's public address and saw the router's certificate. Compare normal DNS with the pinned request below before changing trust settings. |
+| nginx returns `421 Misdirected Request` | In the live test the host map still contained `example.net`. Check `sudo grep -nF 'example.net' /etc/nginx/conf.d/multica-https.conf`, replace all remaining examples, then test and reload. |
+
+To isolate DNS while keeping TLS verification enabled:
+
+```powershell
+$piIP = '192.168.1.2' # Substitute the Pi's address.
+curl.exe --noproxy "*" --resolve "multica.${zone}:8443:${piIP}" -I "https://multica.${zone}:8443/"
+```
+
+A 200 only with `--resolve` points to client DNS. A refused connection even
+with `--resolve` calls for checking the nginx service and its 8443 listener.
 
 Open `https://multica.example.net:8443/` from a client using
 Pi-hole. Follow both workspace links, sign in to each, and check that
