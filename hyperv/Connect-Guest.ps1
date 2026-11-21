@@ -1,7 +1,7 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncProviderAuth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
     [switch]$PromptForLoginCode,[switch]$DailyOnly,[string]$Model,
@@ -74,7 +74,7 @@ Daily dashboard    http://localhost:43130/user
 Email              $($logins.daily.email)
 PIN                $dailyPin
 Open the dashboard, enter the email, request a code, then enter the PIN.
-Sign in or renew a provider from Windows. Codex signs in once for both workers:
+Sign in or renew each provider once for its admin and daily workers:
   $helper -Action Auth -Provider codex
   $helper -Action Auth -Provider claude
   $helper -Action Auth -Provider agy
@@ -84,22 +84,28 @@ Worker             $($logins.admin.provider) / $($logins.admin.model)
 Email              $($logins.admin.email)
 PIN                $adminPin
 Both instances and the VM admin worker start with Ubuntu.
-For a Claude or Agy admin worker, sign in separately as the Ubuntu admin user:
-  $helper -Action AdminAuth
+To reuse a current admin login without a browser prompt, for example:
+  $helper -Action SyncProviderAuth -Provider claude
 "@
     }
     Goal { $Goal | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/new-goal.py' }
     MapProjects { & "$PSScriptRoot/Map-Projects.ps1" -Name $Name -Directory $Directory }
     Shell { ssh @opts -t $target }
     Auth {
-        if ($Provider -eq 'codex' -and !$DailyOnly) {
-            ssh @opts -t $target 'sudo bash /opt/multica-local/hyperv/codex-auth.sh login'
+        if (!$DailyOnly) {
+            ssh @opts -t $target "sudo bash /opt/multica-local/hyperv/provider-auth.sh login $($Provider.ToLowerInvariant())"
             return
         }
         $authCmd=@{codex='codex login --device-auth';claude='claude auth login --claudeai';agy='agy --model gemini-3.8-flash-low'}[$Provider]
         ssh @opts -t $target "$compose exec $Provider $authCmd"
     }
-    SyncCodexAuth { ssh @opts $target 'sudo bash /opt/multica-local/hyperv/codex-auth.sh copy' }
+    { $_ -in 'SyncProviderAuth','SyncCodexAuth' } {
+        if ($Action -eq 'SyncProviderAuth' -and !$PSBoundParameters.ContainsKey('Provider')) {
+            throw 'Specify -Provider codex, claude or agy.'
+        }
+        $selected=if ($Action -eq 'SyncCodexAuth') { 'codex' } else { $Provider.ToLowerInvariant() }
+        ssh @opts $target "sudo bash /opt/multica-local/hyperv/provider-auth.sh copy $selected"
+    }
     { $_ -in 'Put','PutExchange' } {
         $source=(Resolve-Path -LiteralPath $Path).Path
         $folder=if ($Action -eq 'Put') {'input'} else {'exchange'}

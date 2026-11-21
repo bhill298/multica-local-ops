@@ -18,7 +18,8 @@ For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
 and follow the [VM operating guide](hyperv/README.md). Open
 [Multica dashboards](http://localhost:43130) from Windows. Both instances and
 the Ubuntu admin worker start on boot. Setup prints the dashboard links and
-accounts, then asks which providers to sign in to. Press Enter to skip them
+accounts, then asks which providers to sign in to. One sign-in per selected
+provider connects its daily and admin workers. Press Enter to skip them
 all, or run `./install.ps1 -HyperV -SkipProviderLogin` unattended. Run
 `./hyperv/Connect-Guest.ps1 -Action QuickStart` to see them again.
 The [VM admin provider and model](hyperv/README.md#vm-administrator) default

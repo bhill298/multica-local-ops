@@ -2,7 +2,7 @@
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media")
 $ErrorActionPreference='Stop'
 $choices=@('codex','claude','agy')
-Write-Host 'Optional provider sign-in. Codex needs one login for the daily and admin workers.'
+Write-Host 'Optional provider sign-in. Each selected provider needs one login for the daily and admin workers.'
 do {
     try {
         $answer=Read-Host 'Choose providers (codex, claude, agy), all, or press Enter for none'

@@ -164,15 +164,13 @@ Codex is the default. For example, to choose Claude during installation:
 To switch an existing VM, finish pending admin jobs, then run:
 
 ```powershell
-./hyperv/Connect-Guest.ps1 -Action AdminAuth -Provider agy
+./hyperv/Connect-Guest.ps1 -Action Auth -Provider agy
 ./hyperv/Connect-Guest.ps1 -Action SetAdminProvider -Provider agy -Model gemini-3.8-flash-low
 ./hyperv/Connect-Guest.ps1 -Action QuickStart
 ```
 
-`AdminAuth` signs in the Ubuntu admin user; it accepts `codex`, `claude`, or
-`agy`. The interactive daily-provider menu connects Claude and Agy inside
-their respective containers. The host admin has its own Claude and Agy
-logins. Use the same `AdminAuth` command to renew one. Exit Agy after login.
+If Agy was connected during setup, you can omit the first command. The
+selected providers are already available to both workers.
 
 The switch binds the existing admin agent to the selected runtime on its
 own daemon and updates its model. The agent ID and issue history stay in the
@@ -186,28 +184,37 @@ configured default. To discard the override and follow the install defaults:
 
 ### Sign in or renew a provider from Windows
 
-Run `./hyperv/Connect-Guest.ps1 -Action Auth -Provider codex` to sign in
-once with ChatGPT in the admin profile. The helper copies only that provider's
-login to the daily Codex container over an in-guest pipe. It replaces the
-daily provider login. Windows never handles the token. The two Multica tokens,
-home directories, instructions and conversation histories stay separate.
-With an already valid admin login, `-Action SyncCodexAuth` copies it without
-another browser sign-in. Codex can refresh its local cache independently in
-each profile, so a one-time copy can diverge. If renewal fails, repeat the
-sign-in command. For independent logins use `-Action AdminAuth` and
-`-Action Auth -Provider codex -DailyOnly`. [Codex authentication](https://developers.openai.com/codex/auth)
+Use `./hyperv/Connect-Guest.ps1 -Action Auth -Provider claude`, substituting
+`agy` or `codex` as needed. Setup calls this same command for each provider
+you select. Complete the provider's browser sign-in once in the Ubuntu admin
+profile. For Agy, exit the interactive CLI normally after signing in so the
+helper can finish. The helper replaces that provider's OAuth login in its
+daily container. You can do this while a different admin provider is active.
 
-For Claude or Agy use `-Action Auth -Provider claude` or
-`-Action Auth -Provider agy` from Windows. Each opens that provider's own
-login in its daily worker. Exit Agy's interactive session after signing in
-to return to setup. These commands also work after a session expires.
+If the admin login is already current, use `-Action SyncProviderAuth -Provider
+claude` (or `agy` or `codex`) to copy it without another browser sign-in.
+`-Action SyncCodexAuth` is still available. Each worker has a private copy.
+If refresh tokens diverge or the provider asks you to authenticate again,
+rerun `-Action Auth -Provider <name>` to renew both. For intentionally
+separate accounts, use `-Action AdminAuth -Provider <name>` for admin only,
+or `-Action Auth -Provider <name> -DailyOnly`.
+
+The transfer runs inside Ubuntu as the two provider users. It copies only
+login fields, never a whole home directory or a Multica workspace token.
+Claude uses its Linux credential file. Agy 1.5.13 uses a dedicated OAuth
+file in this headless installation. A keyring-only Agy installation would
+need a separate login method. [Claude authentication](https://code.claude.com/docs/en/authentication)
+· [Agy authentication](https://antigravity.google/docs/install?tab=cli)
+· [Codex authentication](https://developers.openai.com/codex/auth)
 
 The live shared-login test copied the actual admin Codex credential with
 `-Action SyncCodexAuth`, then submitted jobs to the daily Builder and VM
 Admin simultaneously. Both made successful model calls and posted their
 measured execution times. Their 30-second shell checks overlapped by 26
-seconds. The Claude Haiku and Gemini 3.8 Flash workers also completed separate
-login checks. Long-term refresh of two independently used copies was not tested.
+seconds. Claude Haiku and Agy Gemini 3.8 Flash Low each returned independently
+verified model responses from overlapping admin and daily CLI processes after
+sync. Fresh containers for both also completed model calls with only the
+copied credential in a new worker home. Long-term token refresh was not tested.
 
 ### Other model endpoints and API keys
 
