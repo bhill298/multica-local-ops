@@ -48,12 +48,19 @@ and cleanup commands before migration and again when it finishes.
   and separately copied backups remain. Specify `-Name` for a nondefault VM.
 
 The installed release is saved under `/var/lib/multica-local/release-pins.json`
-and survives reprovisioning from this version of the repo. A fresh VM starts
-on the repo baseline. Use the recorded release tag to reproduce an upgrade.
+and survives reprovisioning. A fresh VM starts on v0.11.1. The installer
+uses the commit and image digests in [initial-release.json](../hyperv/initial-release.json).
+Use the updater for later releases or to move an older VM to that baseline.
 Depending on the release, a change to upstream configuration or to an adapter
 can still require changes here.
 
 ## Live upgrade test, November 20, 2026
+
+We also checked the v0.11.1 fresh-install pins in a separate Compose project
+on the installed VM. With an empty database, fresh worker homes and the
+installed images, the setup created the workspace, enrolled all three runtimes
+and created the eight agents. The dashboard returned HTTP 200. This exercised
+application setup independently of the Ubuntu ISO install and provider sign-in.
 
 The updater took an installed v0.7.0 VM to v0.11.1 (commit
 `e1fe10d6694848e35dd1aa00e08cd11d93e545ac`). The existing workspace, team IDs

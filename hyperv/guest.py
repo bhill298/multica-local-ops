@@ -6,6 +6,7 @@ from pathlib import Path
 import secrets
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import urllib.error
@@ -14,12 +15,23 @@ from share import configure as configure_share
 ROOT = Path(__file__).resolve().parents[1]
 STATE = Path("/var/lib/multica-local")
 PROVIDERS = ("codex", "claude", "agy")
-SETTINGS = json.loads((ROOT / "config/settings.json").read_text())
-if (STATE / "release-pins.json").exists():
-    pins = json.loads((STATE / "release-pins.json").read_text())
-    SETTINGS["upstream_commit"] = pins["commit"]
-    SETTINGS["images"].update({key: pins[key] for key in ("backend", "frontend")})
 PORT = 43130
+
+
+def load_settings(state):
+    settings = json.loads((ROOT / "config/settings.json").read_text())
+    pins_path = state / "release-pins.json"
+    if not pins_path.exists():
+        if (state / "compose.json").exists():
+            return settings  # Existing installation from before the release updater.
+        pins_path = ROOT / "hyperv/initial-release.json"
+    pins = json.loads(pins_path.read_text())
+    settings["upstream_commit"] = pins["commit"]
+    settings["images"].update({key: pins[key] for key in ("backend", "frontend")})
+    return settings
+
+
+SETTINGS = load_settings(STATE)
 
 
 def run(*args, **kwargs):
@@ -184,6 +196,13 @@ def create_team(workspace):
 def provision(kvm=False):
     os.umask(0o077)
     STATE.mkdir(mode=0o700,exist_ok=True)
+    pins_path = STATE / "release-pins.json"
+    if not pins_path.exists():
+        pins = {"commit": SETTINGS["upstream_commit"],
+                **{key: SETTINGS["images"][key] for key in ("backend", "frontend")}}
+        with tempfile.NamedTemporaryFile(mode="w", dir=STATE, delete=False) as fp:
+            json.dump(pins, fp)
+        os.replace(fp.name, pins_path)
     creds=credentials()
     Path("/etc/apt/apt.conf.d/52multica-local-updates").write_text(
         'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n'

@@ -12,8 +12,12 @@ Existing guests receive point-release package changes through normal apt updates
 During guest setup run `sudo bash setup-packages.sh --install`. It reads the
 package list for the installed Ubuntu codename, refreshes apt, and checks that
 the whole transaction resolves before installing. Use `--check` for validation.
-The VM installer invokes this step automatically. The Docker
-worker image and its separate package choices are under [linux-worker](../linux-worker/README.md).
+The VM installer invokes this step automatically. Ubuntu includes Git,
+curl, jq, ripgrep, GCC/G++, Make, CMake, Ninja, binutils, Python with venv,
+SQLite, ZIP tools, Poppler and QEMU. These are available over SSH and to
+the manually started VM administrator. The daily workers have their own
+[toolbox](../linux-worker/README.md), including Chromium, Selenium, Xvfb,
+LibreOffice and Pandoc.
 
 For a newer Ubuntu series, add its codename list beside the existing one and
 validate it in a clean guest. Update only the renamed or replaced packages.
