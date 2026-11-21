@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory,ParameterSetName='Apply')][switch]$Apply,
     [Parameter(Mandatory,ParameterSetName='Restore')][switch]$Restore,
     [Parameter(Mandatory,ParameterSetName='Clear')][switch]$Clear,
+    [Parameter(Mandatory,ParameterSetName='Promote')][switch]$PromoteInstalled,
     [Parameter(Mandatory,ParameterSetName='Restore')]
     [Parameter(Mandatory,ParameterSetName='Clear')][guid]$BackupId,
     [Parameter(ParameterSetName='Plan')][Parameter(ParameterSetName='Apply')]
@@ -15,7 +16,7 @@ param(
 )
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
-if ($PSCmdlet.ParameterSetName -ne 'Plan' -and !($Apply -or $Restore -or $Clear)) { throw 'Choose one update action.' }
+if ($PSCmdlet.ParameterSetName -ne 'Plan' -and !($Apply -or $Restore -or $Clear -or $PromoteInstalled)) { throw 'Choose one update action.' }
 $hostRoot=Join-Path $env:ProgramFiles "MulticaVM/$Name"
 $state=Get-Content "$hostRoot/vm.json" -Raw | ConvertFrom-Json
 if ($state.phase -ne 'installed') { throw 'Complete the VM installation first.' }
@@ -34,13 +35,34 @@ function Invoke-GuestUpdate([string[]]$Words) {
             if ($tail.Count -eq 4) {$null=$tail.Dequeue()}
             $tail.Enqueue($line.Substring(0,[Math]::Min(1600,$line.Length)))
         }
-        if ($Words[0] -eq 'status') {
+        if ($Words[0] -in 'status','installed-pins') {
             if ($_ -isnot [Management.Automation.ErrorRecord]) { $_ }
         } elseif ($line.StartsWith('Warning: ')) {
             Write-Warning $line.Substring(9)
         } else { Write-Host $line }
     }
     if ($LASTEXITCODE) { throw "Guest $($Words[0]) failed (exit $LASTEXITCODE): $($tail -join [Environment]::NewLine)" }
+}
+
+if ($PromoteInstalled) {
+    $file=Join-Path $PSScriptRoot 'hyperv/initial-release.json'
+    if (!(Test-Path -LiteralPath $file -PathType Leaf)) {throw 'Run -PromoteInstalled from the installer checkout.'}
+    $pins=Invoke-GuestUpdate @('installed-pins') | ConvertFrom-Json
+    if ($pins.commit -cnotmatch '^[a-f0-9]{40}\z' -or
+        $pins.backend -cnotmatch '^ghcr\.io/multica-ai/multica-backend@sha256:[a-f0-9]{64}\z' -or
+        $pins.frontend -cnotmatch '^ghcr\.io/multica-ai/multica-web@sha256:[a-f0-9]{64}\z') {throw 'Invalid installed Multica release pins.'}
+    $old=Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
+    if ($old.commit -ceq $pins.commit -and $old.backend -ceq $pins.backend -and $old.frontend -ceq $pins.frontend) {
+        Write-Output "Fresh-install pins already match $Name ($($pins.commit))."; return
+    }
+    $json=[ordered]@{commit=$pins.commit;backend=$pins.backend;frontend=$pins.frontend} | ConvertTo-Json
+    $tmp="$file.$([guid]::NewGuid()).tmp"
+    try {
+        [IO.File]::WriteAllText($tmp,($json.Replace("`r`n","`n")+"`n"))
+        [IO.File]::Move($tmp,$file,$true)
+    } finally {if (Test-Path -LiteralPath $tmp){Remove-Item -LiteralPath $tmp}}
+    Write-Output "Promoted $Name ($($pins.commit)). Review git diff -- hyperv/initial-release.json and commit the new baseline."
+    return
 }
 
 function Get-ImagePin([string]$Image,[string]$Tag) {

@@ -165,6 +165,17 @@ def activate(target, backup):
 
 
 def main(args):
+    if args == ["installed-pins"]:
+        pins = current()
+        for service in ("backend", "frontend"):
+            container = f"multica-vm-{service}-1"
+            image = output("docker", "inspect", "-f", "{{if .State.Running}}{{.Config.Image}}{{end}}", container)
+            if image != pins[service]:
+                raise RuntimeError(f"{container} is stopped or differs from the installed {service} pin.")
+        if current() != pins:
+            raise RuntimeError("Installed pins changed during verification. Retry after the update completes.")
+        print(json.dumps(pins))
+        return
     if args == ["status"]:
         print(json.dumps(current()))
         return

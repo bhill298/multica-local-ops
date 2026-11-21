@@ -16,8 +16,10 @@ Git preserves the setup and test procedures. A fresh install needs internet
 access to download the Ubuntu ISO, apt packages, Docker images, upstream
 Multica source and provider tools. The Ubuntu ISO checksum, Multica commit,
 service image digests and Codex/Claude CLI versions are pinned. Base image
-tags, distro packages and Agy's installer can change. New VMs start on Multica
-v0.11.1. Use `./update-vm.ps1` to check for a newer release. A new install
+tags, distro packages and Agy's installer can change. New VMs use the
+[pinned Multica release](initial-release.json). Use `./update-vm.ps1` to
+check for a newer release and `./update-vm.ps1 -PromoteInstalled` to make
+an accepted VM update the default for new installs. A new install
 creates local keys and an empty workspace. At the end of an interactive
 install, pick any combination of `codex`, `claude`, and `agy`, type `all`,
 or press Enter to skip sign-in. Use `./install.ps1 -HyperV -SkipProviderLogin`

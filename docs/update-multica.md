@@ -92,11 +92,29 @@ and cleanup commands before migration and again when it finishes.
   and separately copied backups remain. Specify `-Name` for a nondefault VM.
 
 The installed release is saved under `/var/lib/multica-local/release-pins.json`
-and survives reprovisioning. A fresh VM starts on v0.11.1. The installer
-uses the commit and image digests in [initial-release.json](../hyperv/initial-release.json).
+and survives reprovisioning. A fresh VM uses the commit and image digests in
+[initial-release.json](../hyperv/initial-release.json).
 Use the updater for later releases or to move an older VM to that baseline.
 Depending on the release, a change to upstream configuration or to an adapter
 can still require changes here.
+
+### Make the tested VM release the fresh-install default
+
+After you've accepted the update, run this in the installer checkout with
+the VM running. For a secondary installation, pass its usual `-Name` and
+`-Directory`.
+
+```powershell
+./update-vm.ps1 -PromoteInstalled
+git diff -- hyperv/initial-release.json
+```
+
+The command reads the VM's saved Multica commit and image digests over SSH
+and checks the running daily backend and web containers against those digests.
+An interrupted update or image mismatch stops promotion. No GitHub lookup,
+VM change or Windows elevation is needed. Matching pins leave the file
+untouched. Commit and push a changed baseline when you want new clones to
+use it. Provider CLIs, PostgreSQL and Ubuntu have their own version settings.
 
 ## SQL compatibility before an update
 

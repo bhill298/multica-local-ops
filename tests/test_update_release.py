@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import subprocess
 from pathlib import Path
@@ -29,6 +30,20 @@ class UpdateTests(unittest.TestCase):
         (root / "team.json").write_text('{"lead":"agent-id"}')
         (root / "workspace").write_text("workspace")
         self.target = {"commit":"b"*40,"backend":"new-api","frontend":"new-web"}
+
+    def test_promote_requires_matching_running_images_and_finished_update(self):
+        (release.STATE / "release-pins.json").write_text(json.dumps(self.target))
+        with patch.object(release, "output", side_effect=["new-api", "new-web"]), patch("sys.stdout", new_callable=io.StringIO) as out:
+            release.main(["installed-pins"])
+            self.assertEqual(json.loads(out.getvalue()), self.target)
+        with patch.object(release, "output", side_effect=["new-api", "other-web"]):
+            with self.assertRaisesRegex(RuntimeError, "frontend.*differs"):
+                release.main(["installed-pins"])
+        (release.STATE / "update-pending.json").write_text('{"backup":"fixture"}')
+        with patch.object(release, "output") as inspect:
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                release.main(["installed-pins"])
+            inspect.assert_not_called()
 
     def test_busy_before_shutdown(self):
         with patch.object(release, "idle", side_effect=RuntimeError("busy")), patch.object(release.subprocess, "run") as cmd:
