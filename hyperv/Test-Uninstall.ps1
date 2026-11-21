@@ -31,8 +31,22 @@ foreach ($keep in $false,$true) {
             $ports=@{home=$probes[0].LocalEndpoint.Port;daily=$probes[1].LocalEndpoint.Port;admin=$probes[2].LocalEndpoint.Port}
         } finally {foreach ($listener in $probes){$listener.Stop()}}
         $ports | ConvertTo-Json | Set-Content "$source/hyperv/dashboard-ports.json"
-        & "$source/hyperv/Install-Portal.ps1" -Name $name -Directory $media -WebPort $ports.home -SkipProjectDrive
+        $install=@{Name=$name;Directory=$media;WebPort=$ports.home;SkipProjectDrive=$true}
+        $setup="$source/hyperv/Install-Portal.ps1"
+        & $setup @install
         if ((Invoke-WebRequest "http://localhost:$($ports.home)" -NoProxy).StatusCode -ne 200){throw 'Offline test portal unavailable.'}
+        $api="http://$($name.ToLowerInvariant()).localhost:$($ports.home)/api/job"
+        $shortcut=Join-Path ([Environment]::GetFolderPath('Programs')) "$name Management.lnk"
+        $keyPath="$profileDir/portal/operator.key"
+        $pair="$profileDir/portal/open-management.html"
+        if ((Invoke-WebRequest $api -NoProxy).StatusCode -ne 200 -or (Get-Item $keyPath).Length -ne 0 -or
+            (Test-Path $pair) -or (Test-Path $shortcut)){throw 'Fresh install did not use direct access.'}
+        & $setup @install -RequireManagementKey
+        $key=[IO.File]::ReadAllText($keyPath)
+        if ($key -cnotmatch '^[a-f0-9]{64}$' -or !(Test-Path $pair) -or !(Test-Path $shortcut)){throw 'Missing keyed setup assets.'}
+        & $setup @install
+        if ((Invoke-WebRequest $api -NoProxy -SkipHttpErrorCheck).StatusCode -ne 403 -or
+            (Invoke-WebRequest $api -NoProxy -Headers @{Authorization="Bearer $key"}).StatusCode -ne 200){throw 'Repair did not preserve key-based access.'}
     }
     Checkpoint-VM -VM $vm -SnapshotName 'uninstall fixture'
     $arguments=@{Name=$name;Directory=$media;KeepDisk=$keep}

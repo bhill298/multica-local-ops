@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -39,6 +41,56 @@ func TestManagementBoundary(t *testing.T) {
 		h.ServeHTTP(w, httptest.NewRequest("GET", "http://localhost:43130/"+role, nil))
 		if w.Header().Get("Location") != "http://multica-"+role+".localhost/login" {
 			t.Fatalf("wrong %s redirect (tunnel port %d)", role, port)
+		}
+	}
+}
+func TestLocalManagementAccess(t *testing.T) {
+	p := portal{cfg: config{Prefix: "multica", Port: 80, Home: 43130}}
+	h := p.handler()
+	for _, tc := range []struct {
+		method, host, path, origin, content string
+		want                                int
+	}{
+		{"GET", "multica.localhost", "/api/job", "", "", 200},
+		{"GET", "localhost:43130", "/api/job", "", "", 403},
+		{"GET", "unrelated.test", "/api/job", "", "", 421},
+		{"POST", "multica.localhost", "/api/action", "http://unrelated.test", "application/json", 403},
+		{"POST", "multica.localhost", "/api/action", "", "application/json", 403},
+		{"POST", "multica.localhost", "/api/action", "http://multica.localhost", "text/plain", 403},
+	} {
+		r := httptest.NewRequest(tc.method, "http://"+tc.host+tc.path, strings.NewReader(`{"action":"status"}`))
+		r.Header.Set("Origin", tc.origin)
+		r.Header.Set("Content-Type", tc.content)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != tc.want {
+			t.Errorf("%s %s: got %d, want %d", tc.host, tc.origin, w.Code, tc.want)
+		}
+	}
+}
+func TestOperatorKeyModes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "operator.key")
+	if k, err := operatorKey("local", path); err != nil || k != "" {
+		t.Fatal("local mode should require no key")
+	}
+	for _, mode := range []string{"", "key", "typo"} {
+		if _, err := operatorKey(mode, path); err == nil {
+			t.Fatalf("accepted missing key for mode %q", mode)
+		}
+	}
+	for _, value := range []string{"", strings.Repeat("z", 64), strings.Repeat("a", 64)} {
+		if err := os.WriteFile(path, []byte(value), 0600); err != nil {
+			t.Fatal(err)
+		}
+		for _, mode := range []string{"", "key"} {
+			k, err := operatorKey(mode, path)
+			if value == strings.Repeat("a", 64) {
+				if err != nil || k != value {
+					t.Fatal("valid key rejected")
+				}
+			} else if err == nil {
+				t.Fatal("invalid key accepted")
+			}
 		}
 	}
 }

@@ -2,9 +2,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +27,7 @@ import (
 var page []byte
 
 type config struct {
+	ManagementAuth                              string
 	Name, Prefix, Directory, Script, PowerShell string
 	Home, Daily, Admin, Port                    int
 }
@@ -96,6 +99,10 @@ func proxy(target, public string) http.Handler {
 	return rp
 }
 func (p *portal) handler() http.Handler {
+	html := page
+	if p.key != "" {
+		html = bytes.Replace(page, []byte("<html "), []byte("<html data-key-required "), 1)
+	}
 	daily, admin := p.host("-user"), p.host("-admin")
 	links := map[string]string{"/user": "http://" + daily + "/login", "/admin": "http://" + admin + "/login"}
 	dashboards := map[string]http.Handler{daily: proxy(fmt.Sprintf("http://localhost:%d", p.cfg.Daily), "http://"+daily), admin: proxy(fmt.Sprintf("http://127.0.0.1:%d", p.cfg.Admin), "http://"+admin)}
@@ -127,7 +134,7 @@ func (p *portal) handler() http.Handler {
 				}
 				w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Write(page)
+				w.Write(html)
 				return
 			}
 			if r.URL.Path == "/portal.js" {
@@ -140,7 +147,11 @@ func (p *portal) handler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		if host != home || subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+p.key)) != 1 {
+		if host != home {
+			http.Error(w, "Use the management hostname.", 403)
+			return
+		}
+		if p.key != "" && subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+p.key)) != 1 {
 			http.Error(w, "Open the operator management shortcut to pair this browser.", 403)
 			return
 		}
@@ -199,6 +210,25 @@ func (p *portal) handler() http.Handler {
 //go:embed portal.js
 var js []byte
 
+func operatorKey(mode, path string) (string, error) {
+	switch mode {
+	case "local":
+		return "", nil
+	case "", "key": // Older portal configurations always required a key.
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		key := strings.TrimSpace(string(b))
+		if decoded, err := hex.DecodeString(key); err == nil && len(decoded) == 32 {
+			return key, nil
+		}
+		return "", errors.New("invalid operator key")
+	default:
+		return "", errors.New("unknown management authentication mode")
+	}
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("Expected portal configuration path")
@@ -211,13 +241,9 @@ func main() {
 	if e = json.Unmarshal(b, &c); e != nil {
 		log.Fatal(e)
 	}
-	b, e = os.ReadFile(filepath.Join(filepath.Dir(os.Args[1]), "operator.key"))
+	key, e := operatorKey(c.ManagementAuth, filepath.Join(filepath.Dir(os.Args[1]), "operator.key"))
 	if e != nil {
 		log.Fatal(e)
-	}
-	key := strings.TrimSpace(string(b))
-	if len(key) != 64 {
-		log.Fatal("Invalid operator key")
 	}
 	p := portal{cfg: c, key: key}
 	handler := p.handler()

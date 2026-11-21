@@ -33,6 +33,7 @@ if (Test-Path $portalConfig) {
 }
 if ($Action -eq 'Manage') {
     if (!$pc) {throw 'Install the Windows management portal first.'}
+    if ($pc.managementAuth -eq 'local') { Start-Process "$homeUrl/manage"; return }
     $pair=Join-Path $operatorDir portal/open-management.html
     if (!(Test-Path -LiteralPath $pair)){throw 'Repair the Windows portal with Install-Portal.ps1.'}
     Start-Process ([uri]::new($pair).AbsoluteUri)
@@ -90,11 +91,12 @@ switch ($Action) {
         }
         $dailyPin=if ($logins.daily.pin) { $logins.daily.pin } else { "run $helper -Action LoginCode" }
         $adminPin=if ($logins.admin.pin) { $logins.admin.pin } else { "run $helper -Action AdminCode" }
+        $manage=if ($pc -and $pc.managementAuth -ne 'local') {"Open '$Name Management' in Windows Start once to pair this browser."} else {"Open $homeUrl/manage in Windows."}
         @"
 
 Multica quick start
 Open $homeUrl in Windows and choose a workspace.
-Manage the VM: open '$Name Management' in Windows Start, or run $helper -Action Manage
+Manage the VM: $manage
 
 Daily dashboard    $dailyUrl
 Email              $($logins.daily.email)

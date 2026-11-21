@@ -1,8 +1,10 @@
 # Update Multica in the Ubuntu VM
 
 From the Windows landing page, choose **Manage installation**, then
-**Check for updates** or **Install latest stable release**. On first use,
-pair your browser using the [Windows management shortcut](../hyperv/README.md#windows-management).
+**Check for updates** or **Install latest stable release**. The default
+opens directly. If you enabled a management key, pair that browser once.
+[Portal access settings](../hyperv/README.md#windows-management)
+
 The portal checks
 both queues, pauses the admin plane for an upgrade, runs the updater below
 and brings the admin plane back. The command-line procedure covers explicit

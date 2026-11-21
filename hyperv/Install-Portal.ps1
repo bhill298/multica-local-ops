@@ -1,6 +1,6 @@
 #Requires -Version 7.3
 param([ValidatePattern('^[A-Za-z0-9-]{1,50}$')][string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateRange(1,65535)][int]$WebPort,[switch]$SkipProjectDrive)
+    [ValidateRange(1,65535)][int]$WebPort,[switch]$SkipProjectDrive,[switch]$RequireManagementKey)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 $Directory=[IO.Path]::GetFullPath($Directory)
@@ -28,6 +28,21 @@ if ($WebPort -ne $ports.home) {
 $null=New-Item -ItemType Directory -Force -Path $dir
 $who=[Security.Principal.WindowsIdentity]::GetCurrent()
 icacls $dir /inheritance:r /grant:r ("*"+$who.User.Value+':(OI)(CI)F') '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
+$configPath=Join-Path $dir portal.json
+$previous=if (Test-Path -LiteralPath $configPath){Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json}
+if (!$PSBoundParameters.ContainsKey('RequireManagementKey') -and $previous) {
+    # Configurations predating managementAuth were always keyed.
+    if ($previous.managementAuth -notin $null,'key','local'){throw 'Unknown installed portal authentication mode.'}
+    $RequireManagementKey=$previous.managementAuth -ne 'local'
+}
+$mode=if ($RequireManagementKey){'key'}else{'local'}
+$keyFile=Join-Path $dir operator.key
+$secret=''
+if ($RequireManagementKey) {
+    if (Test-Path -LiteralPath $keyFile) {$secret=[IO.File]::ReadAllText($keyFile).Trim()}
+    if (!$secret) {$secret=[Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant()}
+    if ($secret -cnotmatch '^[0-9a-f]{64}$'){throw 'The existing operator key is invalid.'}
+}
 $repo=Split-Path $PSScriptRoot
 $build=Join-Path $dir 'multica-portal.new.exe'
 if (Get-Command go.exe -ErrorAction SilentlyContinue) {
@@ -54,12 +69,14 @@ if (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue) {
     }
 }
 Move-Item -LiteralPath $build -Destination $exe -Force
-$keyFile="$dir/operator.key"
-if (!(Test-Path $keyFile)) {
-    [IO.File]::WriteAllText($keyFile,[Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant())
+[IO.File]::WriteAllText($keyFile,$secret)
+$config=@{name=$Name;prefix=$prefix;home=$ports.home;daily=$ports.daily;admin=$ports.admin;port=$WebPort;directory=$Directory;script="$root/portal/Portal-Action.ps1";powerShell=$pwsh;managementAuth=$mode}
+$config | ConvertTo-Json | Set-Content -LiteralPath $configPath
+$pair=Join-Path $dir open-management.html
+if (!$RequireManagementKey) {
+    & "$PSScriptRoot/Remove-PortalShortcut.ps1" -Name $Name -ProfileDir $profileDir
+    if (Test-Path -LiteralPath $pair){Remove-Item -LiteralPath $pair}
 }
-$config=@{name=$Name;prefix=$prefix;home=$ports.home;daily=$ports.daily;admin=$ports.admin;port=$WebPort;directory=$Directory;script="$root/portal/Portal-Action.ps1";powerShell=$pwsh}
-$config | ConvertTo-Json | Set-Content "$dir/portal.json"
 $action=New-ScheduledTaskAction -Execute $exe -Argument ('"{0}"' -f "$dir/portal.json")
 $trigger=New-ScheduledTaskTrigger -AtLogon -User $who.Name
 $principal=New-ScheduledTaskPrincipal -UserId $who.Name -LogonType Interactive -RunLevel Limited
@@ -67,8 +84,7 @@ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -M
 Register-ScheduledTask -TaskName $task -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 & "$PSScriptRoot/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive -Portal
 $authority=$prefix+'.localhost'+$(if ($WebPort -ne 80){":$WebPort"})
-$pair=Join-Path $dir open-management.html
-$secret=(Get-Content -LiteralPath $keyFile -Raw).Trim()
+if (!$RequireManagementKey) { "Open http://$authority/manage on Windows."; return }
 [IO.File]::WriteAllText($pair,('<meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>location.replace({0})</script>' -f (ConvertTo-Json "http://$authority/manage#$secret" -Compress)))
 $shell=New-Object -ComObject WScript.Shell
 $link=$shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Programs')) "$Name Management.lnk"))

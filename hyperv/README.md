@@ -130,23 +130,36 @@ a Linux Docker Desktop build container. It runs directly on Windows afterward.
 Choose **Manage installation** on the landing page. The same Windows portal
 serves both `/` and `/manage`, including while Ubuntu is shut down.
 
-The first time you use the controls, open **Multica-Ubuntu Management** in
-Windows Start. The shortcut opens a private file in your Windows profile.
-That file takes your browser to the same `/manage` page with the operator
-key in the URL fragment. The page saves the key in that browser profile,
-removes it from the address bar, and uses it to authorize management requests.
-The ordinary landing-page link carries no key. Anyone on the PC can reach
-a loopback URL, so knowing the address alone shouldn't grant permission
-to shut down the VM or install an update. The six-digit workspace PIN
-continues to handle sign-in inside Multica.
+On a fresh install the management key is empty. Bookmark
+http://multica.localhost/manage or click through from the landing page.
+Setup skips the Start shortcut. This default assumes you trust the Windows
+users and programs on the PC. Any local process that can reach the portal
+can request management operations. Windows still handles elevation, and
+Multica still uses the six-digit PIN for workspace sign-in.
 
-For everyday use, click **Manage installation** or bookmark
-http://multica.localhost/manage. Pair again if you switch browser profiles
-or clear the portal's site data. The PowerShell command
-`./hyperv/Connect-Guest.ps1 -Action Manage` opens the same pairing file
-as the shortcut. To pair a different browser profile, open
-`%LOCALAPPDATA%\MulticaVM\portal\open-management.html` in that profile
-(default installation).
+To require a randomly generated management key on a fresh install, run
+`./install.ps1 -HyperV -RequireManagementKey`. You can also change an
+installed portal without reprovisioning Ubuntu:
+
+```powershell
+./hyperv/Install-Portal.ps1 -RequireManagementKey         # Enable pairing
+./hyperv/Install-Portal.ps1 -RequireManagementKey:$false  # Return to direct access
+```
+
+Reinstalling without the switch keeps the existing access mode, including
+on older keyed installations. In keyed mode, open **Multica-Ubuntu Management**
+in Windows Start once per browser profile. The shortcut opens a private
+pairing file. The page saves the key in the browser and removes it from the
+address bar. You can then use the plain bookmark. Switching back to direct
+access clears the key and removes the pairing file and owned Start shortcut.
+Enabling pairing again generates a new key.
+
+We tested direct access from a fresh Edge profile on the installed VM. The
+landing-page link loaded status and refreshed it without an authorization
+header. A separate keyed portal rejected the unpaired browser, accepted
+the pairing link and reopened the plain bookmark. The disposable installer
+test also checked that a repair retained the generated key and uninstall
+removed the shortcut.
 
 The management page shows Hyper-V power state, boot autostart, individual
 worker registrations and running or stopped Compose containers with their
@@ -170,11 +183,12 @@ An interrupted migration requires inspection of the update receipt before
 restarting the admin plane. Allow a maintenance window for an actual upgrade.
 [Update backups and recovery](../docs/update-multica.md)
 
-The private portal binary, pairing file and operator key live under
-`%LOCALAPPDATA%\MulticaVM\portal`. Privileged scripts and the installation
+The portal binary and `operator.key` live under
+`%LOCALAPPDATA%\MulticaVM\portal`. Keyed installs also keep the private
+pairing file there. Privileged scripts and the installation
 record live under `%ProgramFiles%\MulticaVM\Multica-Ubuntu\portal`. The
-Start shortcut opens the private pairing file. Keep that file and the key
-with your other operator credentials.
+optional Start shortcut opens the private pairing file. Keep that file and
+any nonempty key with your other operator credentials.
 
 **November 21 verification.** After a physical Windows reboot we verified
 the original dashboard endpoints, containers and project drive. After

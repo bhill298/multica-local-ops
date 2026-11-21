@@ -74,11 +74,7 @@ foreach ($folder in ($folders | Sort-Object -Unique)) {
     if ((Test-Path "$folder/installer.iso") -and (Get-FileHash "$folder/installer.iso").Hash -eq $media.sha256) {$files+='installer.iso'}
     Clear-Files $folder $files
 }
-$shortcut=Join-Path ([Environment]::GetFolderPath('Programs')) "$Name Management.lnk"
-if (Test-Path -LiteralPath $shortcut) {
-    $link=(New-Object -ComObject WScript.Shell).CreateShortcut($shortcut)
-    if ($link.Arguments -eq ('"'+(Join-Path $profileDir 'portal/open-management.html')+'"')) {Remove-Item -LiteralPath $shortcut -Force}
-}
+& "$PSScriptRoot/hyperv/Remove-PortalShortcut.ps1" -Name $Name -ProfileDir $profileDir
 Clear-Files "$profileDir/portal/build" @('multica-portal.new.exe')
 Clear-Files "$profileDir/portal" @('multica-portal.exe','multica-portal.new.exe','portal.json','operator.key','open-management.html')
 Clear-Files "$profileDir/relay" @('UI-Relay.ps1','relay.json','relay.vbs','Map-Projects.ps1','projects.vbs')

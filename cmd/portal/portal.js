@@ -1,12 +1,15 @@
 if (location.pathname === "/manage") {
   const el = id => document.getElementById(id);
   el("manage").hidden = false;
-  const fragment = location.hash.slice(1);
-  if (/^[a-f0-9]{64}$/.test(fragment)) {
-    localStorage.setItem("multicaOperator", fragment);
-    history.replaceState(null, "", "/manage");
+  const keyRequired = document.documentElement.hasAttribute("data-key-required");
+  const headers = {};
+  if (keyRequired) {
+    const fragment = location.hash.slice(1);
+    if (/^[a-f0-9]{64}$/.test(fragment)) localStorage.setItem("multicaOperator", fragment);
+    const key = localStorage.getItem("multicaOperator");
+    if (key) headers.Authorization = "Bearer " + key;
   }
-  const headers = {Authorization: "Bearer " + (localStorage.getItem("multicaOperator") || "")};
+  if (location.hash) history.replaceState(null, "", "/manage");
   let busy = false;
   function table(title, columns, rows) {
     const h = document.createElement("h2");
@@ -71,7 +74,7 @@ if (location.pathname === "/manage") {
       }
     } catch (error) {
       el("summary").textContent = error.message;
-      if (el("controls").hidden) el("result").textContent = "On Windows run ./hyperv/Connect-Guest.ps1 -Action Manage from the installer checkout.";
+      if (keyRequired && el("controls").hidden) el("result").textContent = "On Windows run ./hyperv/Connect-Guest.ps1 -Action Manage from the installer checkout.";
     } finally { busy = false; buttons.forEach(b => b.disabled = false); }
   }
   document.querySelectorAll("button").forEach(b => b.onclick = () => {
