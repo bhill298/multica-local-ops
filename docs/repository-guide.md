@@ -94,6 +94,10 @@ running Windows portal uses an installed binary and a protected copy of its
 PowerShell helpers. After pulling a portal or web-updater fix, run
 `./hyperv/Install-Portal.ps1` to install those copies. To update Multica
 in the guest, use the portal's update control or `./update-vm.ps1`.
+Changes to guest provisioning scripts are copied into Ubuntu when you
+rerun `./install.ps1 -HyperV`. Schedule that for an idle VM since
+provisioning can rebuild the worker images. Pin promotion runs directly
+from this checkout, so it works without reinstalling the portal or guest.
 
 ## What Git preserves
 

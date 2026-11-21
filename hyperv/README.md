@@ -34,6 +34,9 @@ to override the host-size defaults, growable disk, checkpoint retention, or
 Windows drive mapping. Defaults require approximately 16 GiB total RAM, 5 GiB
 currently free and 40 GiB free on the VM disk drive. New guests get 4 GiB at
 startup, 2 GiB minimum, and up to 65% of host memory (capped at 64 GiB).
+Setup checks for the Docker command up front. On a fresh install, a stopped
+engine or one set to Windows containers can still fail at the media build.
+Start Docker Desktop in Linux container mode and rerun the install.
 
 The installer creates a dedicated SSH key and ISO under
 `%LOCALAPPDATA%\MulticaVM`. Its elevated portion creates the VM disk under the
@@ -208,6 +211,21 @@ task then restored four online runtimes, nine containers, both named dashboards
 and the Z: drive. That last check exercised the actual tasks without a second
 Windows reboot. The installed release was already current, so the portal
 exercised its no-update path. The earlier migration test covers the updater.
+
+**Live inventory, November 21.** The landing page, management page and both
+login pages returned HTTP 200. Boot autostart was enabled, nine containers
+were running, all four selected runtimes were online, and Z: was accessible.
+The three daily CLIs reported 0.11.1, matching the installer pin. Hyper-V
+reported 4,270 MiB of physical RAM assigned during this check.
+
+The installed helpers reflect when they were copied. On this VM the guest
+provisioners still used the default dashboard ports directly, and the admin
+provisioner lacked the later retry for a missing daemon ID during enrollment.
+The running admin was already enrolled. The protected Windows updater had
+the same web update checks as the checkout. Its older copy omitted the
+checkout-only pin promotion command. Pulling the repo doesn't replace either
+installed copy. The [repository guide](../docs/repository-guide.md#which-settings-apply)
+explains which settings and commands apply to an existing installation.
 
 ### Uninstall the Hyper-V deployment
 

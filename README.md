@@ -38,6 +38,102 @@ switch the existing agent later.
 See [dashboard credentials and multi-user setup](hyperv/README.md#dashboard-accounts)
 for the defaults and how to change them. See the [Ubuntu upgrade
 workflow](linux-guest/README.md) and [worker tools](linux-worker/README.md).
+
+## What runs where
+
+Windows hosts the landing page, **Manage installation**, and the tasks that
+start and maintain the VM. Both Multica dashboards, both databases and all
+workers run in Ubuntu. Windows Docker Desktop builds the Ubuntu install
+media and can compile the portal if Go is unavailable. Once installed, the
+deployment runs with Docker Desktop closed.
+
+```mermaid
+flowchart TB
+    subgraph win["Windows host · Docker Desktop builds install media"]
+        portal["Browser → local portal<br/>Landing page and management"]
+        portal --> relay["SSH dashboard forwards"]
+        portal --> power["Power and updates<br/>Boot, network and checkpoint tasks"]
+        drive["Explorer drive Z:"]
+    end
+    subgraph vm["Ubuntu Server on Hyper-V"]
+        subgraph engine["Ubuntu Docker Engine"]
+            subgraph daily["Daily Multica instance"]
+                dw["Daily web"] --> da["Daily API and queue"] --> db["Daily PostgreSQL"]
+                workers["3 worker containers<br/>Codex · Claude · Agy"] --> da
+            end
+            subgraph admin["Admin Multica instance"]
+                aw["Admin web"] --> aa["Admin API and queue"] --> ab["Admin PostgreSQL"]
+            end
+        end
+        root["VM Admin daemon<br/>systemd + sudo"] --> aa
+        files["Guest project files<br/>input and exchange"]
+        workers --> files
+    end
+    relay --> dw
+    relay --> aw
+    power -.-> vm
+    drive <-->|encrypted SMB| files
+```
+
+The VM can take jobs before Windows sign-in. At sign-in, user tasks start
+the portal and dashboard forwards and reconnect the project drive. To stop,
+start or restart the whole deployment, use **Manage installation** on the
+Windows landing page. The portal stays available while Ubuntu is off. The
+**VM Admin** dashboard is where you give an agent work inside Ubuntu.
+
+Windows connects to files *stored in the VM*. From Explorer you can write
+to both folders. Daily workers can read `/project/input` and can create,
+edit or delete files in `/project/exchange`. Each worker has its own
+provider home, container-local sudo and, by default, `/dev/kvm`. They have
+no mount of the Windows filesystem, guest root or Docker socket. VM Admin
+has sudo on Ubuntu and can read all those provider homes and change Docker.
+Windows enforces the VM network rules, including the host and LAN blocks.
+Public internet access is allowed, so treat anything a worker can read,
+including its own login, as data it could send out. See the [VM isolation
+and recovery notes](hyperv/README.md#boot-isolation-and-recovery).
+
+## Give the team work
+
+The daily dashboard starts with eight agents on three provider workers.
+Give **Mika** an outcome. Mika delegates to **Code Lead** or **Research
+Lead**. The leads can assign **Builder** or **Researcher** and ask
+**Reviewer** to check the result. Those six roles share the Codex
+container. **Claude Worker** and **Agy Flash Worker** use their respective
+containers. You can also assign work directly. For a goal that should
+keep moving while you're away, this command registers a recovery timer
+before dispatching the first run:
+
+```powershell
+./new-goal.ps1 -HyperV -Title "Review the project" -OutcomeFile ./outcome.txt
+```
+
+Agents coordinate through stock Multica. The lead assigns child issues,
+workers report results in the issue, and the lead can follow runs and wake
+up to check progress. Use the daily dashboard to inspect a worker or send
+a correction. The shared exchange is available for handing off files.
+This works across provider containers through the daily API. Each provider
+has its own Docker network. The admin instance has its own queue, database
+and credentials, so assigning a daily issue cannot dispatch the Ubuntu
+administrator.
+
+To add an agent, select its runtime in the dashboard and set its model and
+instructions. An agent using an API key on an existing provider runs in
+that same worker, alongside any subscription-backed agents assigned to it.
+A compatible endpoint may also need CLI-specific settings. A different CLI
+needs an installed, registered runtime. Adding an agent or a key alone
+doesn't provision a container. Agents sharing a worker also share its home
+and filesystem permissions. Multica stores agent environment values,
+including keys entered there, in its database in plaintext.
+
+For installer defaults see [role instructions](config/roles.json),
+[models and timers](config/settings.json) and the [coordination
+instructions](coordination-local.txt). The VM guide covers [provider sign-in
+and renewal](hyperv/README.md#sign-in-or-renew-a-provider-from-windows) and
+[custom endpoints and keys](hyperv/README.md#other-model-endpoints-and-api-keys).
+For Multica's own UI and CLI, look up agents, runtimes, issues and wakeups
+in the upstream documentation. The [repository guide](docs/repository-guide.md)
+indexes the installation, upgrade, recovery and testing notes.
+
 ## Earlier native Windows installation
 
 The remaining setup and login instructions below apply to native Windows workers.
