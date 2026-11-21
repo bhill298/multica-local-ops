@@ -1,7 +1,9 @@
 # Update Multica in the Ubuntu VM
 
-For the Windows UI, open **Multica-Ubuntu Management** in Start and choose
-**Check for updates** or **Install latest stable release**. The portal checks
+From the Windows landing page, choose **Manage installation**, then
+**Check for updates** or **Install latest stable release**. On first use,
+pair your browser using the [Windows management shortcut](../hyperv/README.md#windows-management).
+The portal checks
 both queues, pauses the admin plane for an upgrade, runs the updater below
 and brings the admin plane back. The command-line procedure covers explicit
 release selection, restore and backup cleanup.

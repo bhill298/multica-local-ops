@@ -127,11 +127,26 @@ a Linux Docker Desktop build container. It runs directly on Windows afterward.
 
 ### Windows management
 
-Open **Multica-Ubuntu Management** in Windows Start once per browser profile,
-or run `./hyperv/Connect-Guest.ps1 -Action Manage`. Then bookmark
-http://multica.localhost/manage. This pairs the browser to your Windows
-operator account. Clearing site storage removes the pairing. The six-digit
-Multica PIN signs in to a workspace and cannot authorize Windows actions.
+Choose **Manage installation** on the landing page. The same Windows portal
+serves both `/` and `/manage`, including while Ubuntu is shut down.
+
+The first time you use the controls, open **Multica-Ubuntu Management** in
+Windows Start. The shortcut opens a private file in your Windows profile.
+That file takes your browser to the same `/manage` page with the operator
+key in the URL fragment. The page saves the key in that browser profile,
+removes it from the address bar, and uses it to authorize management requests.
+The ordinary landing-page link carries no key. Anyone on the PC can reach
+a loopback URL, so knowing the address alone shouldn't grant permission
+to shut down the VM or install an update. The six-digit workspace PIN
+continues to handle sign-in inside Multica.
+
+For everyday use, click **Manage installation** or bookmark
+http://multica.localhost/manage. Pair again if you switch browser profiles
+or clear the portal's site data. The PowerShell command
+`./hyperv/Connect-Guest.ps1 -Action Manage` opens the same pairing file
+as the shortcut. To pair a different browser profile, open
+`%LOCALAPPDATA%\MulticaVM\portal\open-management.html` in that profile
+(default installation).
 
 The management page shows Hyper-V power state, boot autostart, individual
 worker registrations and running or stopped Compose containers with their
