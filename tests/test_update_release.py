@@ -54,6 +54,12 @@ class UpdateTests(unittest.TestCase):
             cmd.assert_not_called()
         self.assertEqual(release.current()["backend"], "old-api")
 
+    def test_named_extra_worker_blocks_before_an_upgrade(self):
+        with patch.object(release, "output", return_value="multica-extra-gateway-worker-1") as inspect:
+            with self.assertRaisesRegex(RuntimeError, "WorkerAction Stop.*multica-extra-gateway-worker-1"):
+                release.idle()
+        self.assertIn("label=local.multica.extra-worker", inspect.call_args.args)
+
     def test_task_racing_shutdown_reopens_old_intake(self):
         with patch.object(release, "idle", side_effect=[None, RuntimeError("busy")]), patch.object(release.subprocess, "run") as cmd:
             with self.assertRaisesRegex(RuntimeError, "busy"):

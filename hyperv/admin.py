@@ -51,7 +51,8 @@ def bind_admin(workspace, provider, model):
             daemon_id=cli("daemon","status").get("daemon_id")
             if daemon_id:
                 runtime=next((r for r in cli("runtime","list") if r["daemon_id"]==daemon_id
-                              and r["provider"]==provider_tools.PROVIDERS[provider] and r["status"]=="online"),None)
+                              and r["provider"]==provider_tools.PROVIDERS[provider] and r["status"]=="online"
+                              and not r.get("profile_id")),None)
                 if runtime: break
         except subprocess.CalledProcessError:
             pass  # The local daemon is still starting.

@@ -40,6 +40,10 @@ def current():
 
 
 def idle():
+    extras = output("docker", "ps", "--filter", "label=local.multica.extra-worker", "--format", "{{.Names}}")
+    if extras:
+        raise RuntimeError("Stop extra workers with -Action ExtraWorker -WorkerAction Stop before upgrading: "
+                           + ", ".join(extras.splitlines()))
     if output("docker", "ps", "-q", "--filter", "label=com.docker.compose.project=multica-owner-only"):
         raise RuntimeError("Close the owner-only admin stack with AdminStop first.")
     if subprocess.run(["systemctl", "is-active", "--quiet", "multica-vm-admin.service"]).returncode == 0:

@@ -1,0 +1,30 @@
+services:
+  worker:
+    image: multica-local/${WORKER_BASE:?}:vm
+    hostname: extra-${WORKER_NAME:?}
+    init: true
+    restart: unless-stopped
+    shm_size: 512m
+    security_opt:
+      - seccomp=/opt/multica-local/linux-worker/browser-seccomp.json
+    environment:
+      MULTICA_SERVER_URL: http://backend:8080
+      MULTICA_DAEMON_AUTO_RELOAD: "0"
+      MULTICA_DAEMON_AUTO_UPDATE: "0"
+      MULTICA_CODEX_ARGS: '-c approval_policy="never" -c sandbox_mode="danger-full-access"'
+      MULTICA_ANTIGRAVITY_MODEL: gemini-3.8-flash-low
+    entrypoint: ["multica", "daemon", "start", "--foreground", "--no-auto-update", "--no-auto-reload"]
+    networks: [daily]
+    volumes:
+      - home:/home/worker
+      - /srv/multica/project/input:/project/input:ro
+      - /srv/multica/project/exchange:/project/exchange
+      - /opt/multica-local/hyperv/examples:/opt/examples:ro
+    labels:
+      local.multica.extra-worker: "${WORKER_NAME}"
+networks:
+  daily:
+    external: true
+    name: multica-vm_web
+volumes:
+  home: {}

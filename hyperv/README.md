@@ -227,6 +227,13 @@ checkout-only pin promotion command. Pulling the repo doesn't replace either
 installed copy. The [repository guide](../docs/repository-guide.md#which-settings-apply)
 explains which settings and commands apply to an existing installation.
 
+We subsequently refreshed the installed helpers from the checkout and
+tested an extra daily container and a second admin runtime. Both completed
+an issue against a local gateway fixture. The Windows portal showed both
+temporary agents and returned to nine agents and four online runtimes
+after cleanup. The [extra worker guide](../docs/extra-workers.md) has the
+commands and test scope.
+
 ### Uninstall the Hyper-V deployment
 
 From your normal PowerShell 7 session, run `./uninstall-vm.ps1` for a
@@ -431,6 +438,11 @@ sync. Fresh containers for both also completed model calls with only the
 copied credential in a new worker home. Long-term token refresh was not tested.
 
 ### Other model endpoints and API keys
+
+For a separate worker home or a custom executable on the admin daemon,
+see [extra workers and the Python gateway example](../docs/extra-workers.md).
+The Windows management page lists individual agents, their runtime and
+status as well as the underlying containers.
 
 An agent's settings in the web UI include **Environment variables** and
 **Custom arguments**. Configure the model and credentials for the provider CLI

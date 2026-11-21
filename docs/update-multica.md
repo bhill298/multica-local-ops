@@ -15,7 +15,9 @@ latest stable upstream release. This also checks whether GitHub Container
 Registry has published both images. To review an exact release, use
 `./update-vm.ps1 -Version v0.11.1`.
 
-Finish queued or running jobs in both workspaces. Run
+Finish queued or running jobs in both workspaces. If you added any
+[extra workers](extra-workers.md), exit their shells and stop them before
+the upgrade. Start them afterward to pick up the updated base images. Run
 `./hyperv/Connect-Guest.ps1 -Action AdminStop` to pause the admin plane. Pick a
 maintenance window when nobody will submit work or edit the project drive.
 Open PowerShell 7 as administrator under the same Windows account you used

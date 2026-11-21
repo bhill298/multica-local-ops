@@ -185,12 +185,21 @@ def create_team(workspace):
         return json.loads(cli("codex","--workspace-id",workspace,*args,"--output","json",capture_output=True,text=True).stdout)
     roles=json.loads((ROOT/"config/roles.json").read_text())
     contract=(ROOT/"coordination-local.txt").read_text()
-    wanted={"codex", "claude", "antigravity"}
+    services={"codex":"codex", "claude":"claude", "antigravity":"agy"}
     for _ in range(90):
-        runtimes={r["provider"]:r["id"] for r in command("runtime","list") if r["status"]=="online"}
-        if wanted <= runtimes.keys(): break
+        # Multiple machines can advertise Codex. Bind a new default role to its intended daemon.
+        machines={}
+        for provider, service in services.items():
+            try:
+                machines[provider]=json.loads(cli(service,"daemon","status","--output","json",
+                                                  capture_output=True,text=True).stdout).get("daemon_id")
+            except subprocess.CalledProcessError:
+                pass  # The freshly enrolled daemon may still be starting.
+        runtimes={r["provider"]:r["id"] for r in command("runtime","list") if r["status"]=="online"
+                  and r["daemon_id"] and r["daemon_id"]==machines.get(r["provider"]) and not r.get("profile_id")}
+        if services.keys() <= runtimes.keys(): break
         time.sleep(2)
-    missing=wanted-runtimes.keys()
+    missing=services.keys()-runtimes.keys()
     if missing: raise RuntimeError("Missing online runtimes: "+", ".join(sorted(missing)))
     agents={a["name"]:a for a in command("agent","list")}
     team={}

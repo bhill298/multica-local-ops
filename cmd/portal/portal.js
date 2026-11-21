@@ -33,7 +33,8 @@ if (location.pathname === "/manage") {
     el("summary").textContent = "VM: " + s.vm + " · Windows boot autostart: " + s.boot + " · Last host check: " + new Date(s.checked).toLocaleString();
     el("details").replaceChildren();
     if (s.guest) {
-      table("Workers", ["Workspace", "Provider", "Status"], s.guest.workers.map(w => [w.workspace, w.provider, w.status]));
+      table("Agents", ["Workspace", "Agent", "Runtime", "Status"], (s.guest.agents || []).map(a => [a.workspace, a.name, a.runtime, a.status]));
+      table("Worker runtimes", ["Workspace", "Runtime", "Provider", "Status"], s.guest.workers.map(w => [w.workspace, w.name || w.provider, w.provider, w.status]));
       table("Containers", ["Container", "Image", "Status"], s.guest.containers.map(c => [c.name, c.image, c.status]));
       if (s.guest.errors.length) el("details").append(s.guest.errors.join(" "));
     } else if (s.detail) el("details").append(s.detail);

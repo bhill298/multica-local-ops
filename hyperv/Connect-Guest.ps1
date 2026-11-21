@@ -1,7 +1,9 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','Manage','LoginCode','AdminCode','Shell','Auth','SyncProviderAuth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','Manage','LoginCode','AdminCode','Shell','Auth','SyncProviderAuth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop','ExtraWorker')][string]$Action='Status',
+    [ValidateSet('Create','Start','Stop','Remove','Shell')][string]$WorkerAction,
+    [ValidatePattern('^[a-z][a-z0-9-]{0,39}$')][string]$WorkerName,
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
     [switch]$PromptForLoginCode,[switch]$DailyOnly,[string]$Model,
@@ -46,6 +48,13 @@ $opts=@('-i',$key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ConnectTi
 $target="multicaops@$address"
 $compose='sudo docker compose -p multica-vm -f /var/lib/multica-local/compose.json'
 switch ($Action) {
+    ExtraWorker {
+        if (!$WorkerName -or !$WorkerAction -or $WorkerName -cnotmatch '^[a-z][a-z0-9-]{0,39}$') {
+            throw 'Specify -WorkerName (lowercase) and -WorkerAction Create, Shell, Start, Stop or Remove.'
+        }
+        $ttyArgs=if ($WorkerAction -eq 'Shell') { @('-t') } else { @() }
+        ssh @opts @ttyArgs $target "sudo bash /opt/multica-local/hyperv/extra-worker.sh $($WorkerAction.ToLowerInvariant()) $WorkerName $($Provider.ToLowerInvariant())"
+    }
     Provision {
         $archive=Join-Path ([IO.Path]::GetTempPath()) ("multica-"+[guid]::NewGuid()+".tar")
         try {

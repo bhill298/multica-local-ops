@@ -60,6 +60,7 @@ flowchart TB
             subgraph daily["Daily Multica instance"]
                 dw["Daily web"] --> da["Daily API and queue"] --> db["Daily PostgreSQL"]
                 workers["3 worker containers<br/>Codex · Claude · Agy"] --> da
+                extra["Optional extra worker<br/>Own home and daemon"] --> da
             end
             subgraph admin["Admin Multica instance"]
                 aw["Admin web"] --> aa["Admin API and queue"] --> ab["Admin PostgreSQL"]
@@ -121,7 +122,11 @@ instructions. An agent using an API key on an existing provider runs in
 that same worker, alongside any subscription-backed agents assigned to it.
 A compatible endpoint may also need CLI-specific settings. A different CLI
 needs an installed, registered runtime. Adding an agent or a key alone
-doesn't provision a container. Agents sharing a worker also share its home
+doesn't provision a container. For a separate home or a custom executable,
+use the [extra worker helper](docs/extra-workers.md). The same guide shows
+how to register a Python gateway on either a daily worker or the Ubuntu
+admin daemon. **Manage installation** lists agents from both workspaces,
+their assigned runtimes and their current status. Agents sharing a worker also share its home
 and filesystem permissions. Multica stores agent environment values,
 including keys entered there, in its database in plaintext.
 

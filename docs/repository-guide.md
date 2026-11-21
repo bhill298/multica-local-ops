@@ -15,6 +15,7 @@ instructions below document the earlier deployment.
 | --- | --- |
 | [VM operating guide](../hyperv/README.md) | Current Hyper-V setup, sizing, ports, browser accounts, operator access, providers, mounts, boot, isolation, recovery and uninstall |
 | [Multica updates](update-multica.md) | Release selection, checkpoints, exports, rollback and the tested upgrade |
+| [Extra workers](extra-workers.md) | Separate containers, API keys, custom Python runtimes and Ubuntu admin profiles |
 | [Guest release](../linux-guest/README.md) and [worker tools](../linux-worker/README.md) | Ubuntu version changes, package lists and the shared worker image |
 | [README](../README.md) | Prerequisites, installation, local browser login, starting goals, management and adoption |
 | [Test findings](findings.md) | Native Windows pilot results and limits; the VM guide records the later Hyper-V tests |

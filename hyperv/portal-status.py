@@ -12,7 +12,7 @@ admin_cli = ["runuser", "-u", "multica-vm-admin", "--", "env",
              "MULTICA_SERVER_URL=http://127.0.0.1:43231", "/opt/multica-owner-bin/multica"]
 projects = [("Daily", "multica-vm", ["docker", "exec", "multica-vm-codex-1", "multica"]),
             ("Admin", "multica-owner-only", admin_cli)]
-result = {"workers": [], "containers": [], "errors": []}
+result = {"agents": [], "workers": [], "containers": [], "errors": []}
 for workspace, project, cli in projects:
     if sys.argv[1:] == ["idle"]:
         try:
@@ -27,11 +27,24 @@ for workspace, project, cli in projects:
                    "--format", "{{json .}}")
     for row in map(json.loads, lines.splitlines()):
         result["containers"].append(dict(name=row["Names"], image=row["Image"], status=row["Status"]))
+    runtimes = {}
     try:
         rows = json.loads(output(*cli, "runtime", "list", "--output", "json"))
         for item in rows:
-            result["workers"].append(dict(workspace=workspace, provider=item["provider"], status=item["status"]))
+            name = item.get("custom_name") or item.get("name") or item["provider"]
+            runtimes[item["id"]] = name
+            result["workers"].append(dict(workspace=workspace, name=name, provider=item["provider"], status=item["status"]))
     except (subprocess.SubprocessError, ValueError, KeyError):
         result["errors"].append(f"{workspace} runtime registration is unavailable.")
+    try:
+        for agent in json.loads(output(*cli, "agent", "list", "--output", "json")):
+            if not agent.get("archived_at"):
+                result["agents"].append(dict(workspace=workspace, name=agent["name"], status=agent["status"],
+                                             runtime=runtimes.get(agent.get("runtime_id"), "Unresolved")))
+    except (subprocess.SubprocessError, ValueError, KeyError):
+        result["errors"].append(f"{workspace} agent list is unavailable.")
 if sys.argv[1:] != ["idle"]:
+    extra = output("docker", "ps", "-a", "--filter", "label=local.multica.extra-worker", "--format", "{{json .}}")
+    for row in map(json.loads, extra.splitlines()):
+        result["containers"].append(dict(name=row["Names"], image=row["Image"], status=row["Status"]))
     print(json.dumps(result))
