@@ -36,6 +36,9 @@ if (location.pathname === "/manage") {
       table("Agents", ["Workspace", "Agent", "Runtime", "Status"], (s.guest.agents || []).map(a => [a.workspace, a.name, a.runtime, a.status]));
       table("Worker runtimes", ["Workspace", "Runtime", "Provider", "Status"], s.guest.workers.map(w => [w.workspace, w.name || w.provider, w.provider, w.status]));
       table("Containers", ["Container", "Image", "Status"], s.guest.containers.map(c => [c.name, c.image, c.status]));
+      if (s.guest.services?.length) {
+        table("Ubuntu services", ["Unit", "State", "Substate", "Startup"], s.guest.services.map(u => [u.unit, u.state, u.substate, u.startup]));
+      }
       if (s.guest.errors.length) el("details").append(s.guest.errors.join(" "));
     } else if (s.detail) el("details").append(s.detail);
     const boot = el("boot");

@@ -169,8 +169,11 @@ test also checked that a repair retained the generated key and uninstall
 removed the shortcut.
 
 The management page shows Hyper-V power state, boot autostart, individual
-worker registrations and running or stopped Compose containers with their
-images. The host refresh task samples power state at two-minute intervals.
+worker registrations and running or stopped Multica containers with their
+images. All nine default containers run in Ubuntu. The Ubuntu services
+table reads the admin daemon's state and startup setting directly from
+systemd. Check its runtime registration as well to see whether Multica
+can dispatch work to it. The host refresh task samples power state at two-minute intervals.
 Portal power actions also refresh it immediately. While the page is open it
 refreshes guest data every minute. An offline runtime for a previously used
 admin provider can remain in Multica's runtime history.
@@ -564,6 +567,16 @@ file and the checkpoint prefix were both read through the repaired drive.
 The drive fix was tested by invoking the registered logon task after this boot.
 
 ## KVM and Dynamic Memory
+
+With both dashboards up and all nine agents idle on November 21, Hyper-V
+assigned the VM 4.38 GiB of the host's 95.6 GiB. Over a 25-second sample
+Ubuntu used 0.35% of its eight-vCPU capacity. The daily web, API and
+database together used about 309 MiB of working memory. The corresponding
+admin containers used 414 MiB, and the admin systemd daemon used 9 MiB.
+These are included in the VM total. Ubuntu used 20.25 GiB on its root
+filesystem. On Windows the base VHDX and four checkpoint differencing
+disks totaled 33.55 GiB in file lengths. Checkpoint growth depends on
+how much disk data changes between checkpoints.
 
 On the tested Ryzen 9 9950X3D host, Hyper-V accepted nesting with 4 GiB
 startup, 2 GiB minimum and 62 GiB maximum RAM. We touched 3 GiB in a worker
