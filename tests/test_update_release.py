@@ -33,9 +33,11 @@ class UpdateTests(unittest.TestCase):
 
     def test_promote_requires_matching_running_images_and_finished_update(self):
         (release.STATE / "release-pins.json").write_text(json.dumps(self.target))
-        with patch.object(release, "output", side_effect=["new-api", "new-web"]), patch("sys.stdout", new_callable=io.StringIO) as out:
-            release.main(["installed-pins"])
-            self.assertEqual(json.loads(out.getvalue()), self.target)
+        for revision, version in (("bbbbbbb", {"version": "v1.2.3"}), ("aaaaaaa", {})):
+            cli = json.dumps({"version": "1.2.3", "commit": revision})
+            with patch.object(release, "output", side_effect=["new-api", "new-web", cli]), patch("sys.stdout", new_callable=io.StringIO) as out:
+                release.main(["installed-pins"])
+                self.assertEqual(json.loads(out.getvalue()), {**self.target, **version})
         with patch.object(release, "output", side_effect=["new-api", "other-web"]):
             with self.assertRaisesRegex(RuntimeError, "frontend.*differs"):
                 release.main(["installed-pins"])

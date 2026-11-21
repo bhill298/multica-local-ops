@@ -46,22 +46,15 @@ function Invoke-GuestUpdate([string[]]$Words) {
 
 if ($PromoteInstalled) {
     $file=Join-Path $PSScriptRoot 'hyperv/initial-release.json'
-    if (!(Test-Path -LiteralPath $file -PathType Leaf)) {throw 'Run -PromoteInstalled from the installer checkout.'}
-    $pins=Invoke-GuestUpdate @('installed-pins') | ConvertFrom-Json
-    if ($pins.commit -cnotmatch '^[a-f0-9]{40}\z' -or
-        $pins.backend -cnotmatch '^ghcr\.io/multica-ai/multica-backend@sha256:[a-f0-9]{64}\z' -or
-        $pins.frontend -cnotmatch '^ghcr\.io/multica-ai/multica-web@sha256:[a-f0-9]{64}\z') {throw 'Invalid installed Multica release pins.'}
-    $old=Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
-    if ($old.commit -ceq $pins.commit -and $old.backend -ceq $pins.backend -and $old.frontend -ceq $pins.frontend) {
-        Write-Output "Fresh-install pins already match $Name ($($pins.commit))."; return
+    if (!(Test-Path -LiteralPath $file -PathType Leaf)) {
+        if ((Test-Path -LiteralPath "$PSScriptRoot/.git") -and (Get-Command git -ErrorAction SilentlyContinue) -and
+            (git -C $PSScriptRoot status --porcelain=v1 -- hyperv/initial-release.json)) {
+            Write-Warning 'The pin file has a local deletion. Skipping promotion and auto-commit.'; return
+        }
+        throw 'Run -PromoteInstalled from the installer checkout.'
     }
-    $json=[ordered]@{commit=$pins.commit;backend=$pins.backend;frontend=$pins.frontend} | ConvertTo-Json
-    $tmp="$file.$([guid]::NewGuid()).tmp"
-    try {
-        [IO.File]::WriteAllText($tmp,($json.Replace("`r`n","`n")+"`n"))
-        [IO.File]::Move($tmp,$file,$true)
-    } finally {if (Test-Path -LiteralPath $tmp){Remove-Item -LiteralPath $tmp}}
-    Write-Output "Promoted $Name ($($pins.commit)). Review git diff -- hyperv/initial-release.json and commit the new baseline."
+    $pins=Invoke-GuestUpdate @('installed-pins') | ConvertFrom-Json
+    & "$PSScriptRoot/hyperv/Promote-ReleasePins.ps1" -Pins $pins -Name $Name
     return
 }
 

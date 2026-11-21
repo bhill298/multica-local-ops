@@ -106,15 +106,24 @@ the VM running. For a secondary installation, pass its usual `-Name` and
 
 ```powershell
 ./update-vm.ps1 -PromoteInstalled
-git diff -- hyperv/initial-release.json
 ```
 
 The command reads the VM's saved Multica commit and image digests over SSH
 and checks the running daily backend and web containers against those digests.
 An interrupted update or image mismatch stops promotion. No GitHub lookup,
 VM change or Windows elevation is needed. Matching pins leave the file
-untouched. Commit and push a changed baseline when you want new clones to
-use it. Provider CLIs, PostgreSQL and Ubuntu have their own version settings.
+untouched. If `hyperv/initial-release.json` was clean, promotion commits
+just that file with a message such as `Upgrade pinned version from v0.11.1 to v0.12.0`.
+Other staged changes stay staged. If release metadata is unavailable, the
+message uses a short upstream commit ID. A digest-only change gets an image
+refresh message.
+
+If the pin file already has staged or unstaged edits, promotion warns,
+updates the pin values in the working copy, and leaves staging and committing
+to you. Review both `git diff` and `git diff --cached` in that case. A local
+deletion is left alone. A ZIP checkout without Git gets the file update and
+a warning. Push when you want new clones to use the baseline. Provider CLIs,
+PostgreSQL and Ubuntu have their own version settings.
 
 ## SQL compatibility before an update
 

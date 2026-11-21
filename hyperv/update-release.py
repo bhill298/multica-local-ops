@@ -172,9 +172,21 @@ def main(args):
             image = output("docker", "inspect", "-f", "{{if .State.Running}}{{.Config.Image}}{{end}}", container)
             if image != pins[service]:
                 raise RuntimeError(f"{container} is stopped or differs from the installed {service} pin.")
+        # Older installations may lack a stamped or running worker. The commit
+        # and digests are sufficient to promote those releases offline.
+        version = {}
+        try:
+            info = json.loads(output("docker", "exec", "multica-vm-codex-1", "multica", "version", "--output", "json"))
+            if isinstance(info, dict):
+                tag, revision = str(info.get("version", "")), str(info.get("commit", ""))
+                if (re.fullmatch(r"v?\d+\.\d+\.\d+", tag) and re.fullmatch(r"[0-9a-f]{7,40}", revision)
+                        and pins["commit"].startswith(revision)):
+                    version["version"] = "v" + tag.removeprefix("v")
+        except (ValueError, subprocess.CalledProcessError):
+            pass
         if current() != pins:
             raise RuntimeError("Installed pins changed during verification. Retry after the update completes.")
-        print(json.dumps(pins))
+        print(json.dumps({**pins, **version}))
         return
     if args == ["status"]:
         print(json.dumps(current()))

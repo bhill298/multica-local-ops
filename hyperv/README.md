@@ -19,7 +19,9 @@ service image digests and Codex/Claude CLI versions are pinned. Base image
 tags, distro packages and Agy's installer can change. New VMs use the
 [pinned Multica release](initial-release.json). Use `./update-vm.ps1` to
 check for a newer release and `./update-vm.ps1 -PromoteInstalled` to make
-an accepted VM update the default for new installs. A new install
+an accepted VM update the default for new installs. Promotion automatically
+commits a clean baseline file locally. You decide when to push.
+A new install
 creates local keys and an empty workspace. At the end of an interactive
 install, pick any combination of `codex`, `claude`, and `agy`, type `all`,
 or press Enter to skip sign-in. Use `./install.ps1 -HyperV -SkipProviderLogin`
