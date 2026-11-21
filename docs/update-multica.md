@@ -73,6 +73,62 @@ Use the updater for later releases or to move an older VM to that baseline.
 Depending on the release, a change to upstream configuration or to an adapter
 can still require changes here.
 
+## SQL compatibility before an update
+
+When the target commit or image digests differ, both Plan and Apply read
+source files from the exact target commit on GitHub. The portal runs Plan
+before it pauses the admin workspace. A failed source read or an unrecognized
+required name stops the update before staging images or changing services.
+An already-current install skips this check. Restore and Clear work without it.
+
+The check looks at current sqlc models and queries for the queue and user
+tables and columns, the handler's terminal status labels, the questionnaire
+fields and version, and the star-prompt limit. Older releases without either
+star-prompt column get a warning; our SQL already skips that optional feature.
+A partial rename fails the check. Old migrations can retain names that the
+current application no longer uses, so searching the migration history for
+a matching word would give false reassurance.
+
+If the check stops an update, inspect the reported name and candidate source.
+A moved source file or rewritten handler can need a checker adjustment even
+if the database still works. Conversely, the names can stay the same while
+their meaning changes. The check does not run candidate migrations. Keep
+the checkpoint/export and verify the upgraded instance as usual. To inspect
+a checkout offline, run `./hyperv/Test-UpstreamSql.ps1 -SourceRoot <checkout>`.
+
+On November 21 we checked the real v0.7.0 and v0.11.1 sources. The installed
+portal updater also planned a v0.11.1 update with a simulated older installed
+version and rejected a simulated candidate missing the queue status column.
+These were read-only checks; the running VM was already on v0.11.1.
+
+### Why these two operations still use SQL
+
+* **Idle check.** Maintenance needs to know whether *any* row in this
+  instance is outside `completed`, `failed` or `cancelled`. The stock
+  `GET /api/agent-task-snapshot` covers one workspace, filters by agent
+  access, and includes deferred tasks only when they carry a wakeup ID.
+  The updater also rechecks after stopping the backend to close intake.
+  An equivalent replacement would need an instance-wide drain operation
+  that closes intake and confirms quiescence, or an authoritative check
+  that remains usable with the backend offline.
+  [Snapshot handler](https://github.com/multica-ai/multica/blob/e1fe10d6694848e35dd1aa00e08cd11d93e545ac/server/internal/handler/agent.go#L3379)
+  · [Snapshot query](https://github.com/multica-ai/multica/blob/e1fe10d6694848e35dd1aa00e08cd11d93e545ac/server/pkg/db/queries/agent.sql#L2588)
+* **Onboarding questionnaire.** `GET /api/me` exposes the answers and
+  `PATCH /api/me/onboarding` accepts a replacement questionnaire. An
+  installer could submit skip flags for a new account that it controls
+  exclusively. On reprovision, a read/merge/write can overwrite an answer
+  saved in another tab between requests. Upstream would need an atomic
+  “skip unanswered fields” operation or a conditional write that rejects
+  stale answers. The existing transaction locks just the owner row.
+  [PATCH handler](https://github.com/multica-ai/multica/blob/e1fe10d6694848e35dd1aa00e08cd11d93e545ac/server/internal/handler/onboarding.go#L214)
+  · [Upstream update query](https://github.com/multica-ai/multica/blob/e1fe10d6694848e35dd1aa00e08cd11d93e545ac/server/pkg/db/queries/user.sql#L55)
+* **GitHub star prompt.** The claim endpoint counts a showing when it is due
+  (minimum account age three days, thirty days between showings). The starred
+  endpoint records a click through to GitHub. There is no separate “don't
+  ask again” preference in this release. The installer caps the showing
+  count at the suppression threshold and preserves the user's click history.
+  [Star-prompt endpoints](https://github.com/multica-ai/multica/blob/e1fe10d6694848e35dd1aa00e08cd11d93e545ac/server/internal/handler/star_prompt.go)
+
 ## Live upgrade test, November 20, 2026
 
 We also checked the v0.11.1 fresh-install pins in a separate Compose project

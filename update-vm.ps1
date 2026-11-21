@@ -62,15 +62,16 @@ function Show-Backup {
 if ($Apply -or $Plan -or $PSCmdlet.ParameterSetName -eq 'Plan') {
     $old=Invoke-GuestUpdate @('status') | ConvertFrom-Json
     $next=Get-ReleasePins
+    $available=$old.commit -ne $next.commit -or $old.backend -ne $next.backend -or $old.frontend -ne $next.frontend
+    if ($available) { & "$PSScriptRoot/hyperv/Test-UpstreamSql.ps1" -Commit $next.commit }
     if ($PassThru) {
-        return [pscustomobject]@{tag=$next.tag;current=$old.commit;target=$next.commit;available=(
-            $old.commit -ne $next.commit -or $old.backend -ne $next.backend -or $old.frontend -ne $next.frontend)}
+        return [pscustomobject]@{tag=$next.tag;current=$old.commit;target=$next.commit;available=$available}
     }
     Write-Host "Installed commit: $($old.commit)"
     Write-Host "Target $($next.tag): $($next.commit)"
     Write-Host "Backend: $($next.backend)"
     Write-Host "Frontend: $($next.frontend)"
-    if ($old.commit -eq $next.commit -and $old.backend -eq $next.backend -and $old.frontend -eq $next.frontend) {
+    if (!$available) {
         Write-Host 'Already pinned to this release.'
         return
     }

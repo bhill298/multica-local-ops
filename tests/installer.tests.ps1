@@ -14,6 +14,8 @@ try {
         Assert (-not $parseErrors) "Parse error: $($file.Name)"
     }
     $checks++
+    & "$PSScriptRoot/upstream-sql.tests.ps1" -Fixture (Join-Path $temporary 'upstream-sql')
+    $checks++
     . "$repo/hyperv/Portal-Hosts.ps1"
     $hostsFixture=Join-Path $temporary hosts
     $originalHosts="# existing comment`r`n127.0.0.1 existing.test`r`n"
