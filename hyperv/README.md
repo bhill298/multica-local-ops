@@ -178,6 +178,7 @@ needs its own pairing at `/manage#<operator-key>` on the LAN origin.
 
 LAN mode uses plain HTTP. Someone able to intercept that connection can
 read or modify requests, including sign-in codes and session cookies.
+For optional HTTPS, see the [manual Pi and Dynu setup](../docs/manual-https.md).
 These private `.lan` names cannot receive a publicly trusted certificate.
 A DNS-validated certificate for a domain you control covers the names on
 that certificate. Pi-hole can resolve those names to a private IP without
