@@ -4,13 +4,13 @@ import json
 from getpass import getpass
 import os
 from pathlib import Path
-import pwd
 import subprocess
 import sys
 import tempfile
 import time
 
 import guest
+import admin_provider as provider_tools
 
 STATE=Path("/var/lib/multica-owner-only")
 BASE="http://127.0.0.1:43231"
@@ -28,17 +28,81 @@ def as_agent(*cmd, **kwargs):
                      "MULTICA_SERVER_URL="+BASE,*cmd,**kwargs)
 
 
+def write_atomic(path, text):
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as f:
+        f.write(text)
+    os.replace(f.name, path)
+
+
+def require_idle():
+    sql="SELECT count(*) FROM agent_task_queue WHERE status NOT IN ('completed','failed','cancelled')"
+    count=subprocess.check_output(["docker","compose","-p","multica-owner-only","-f",str(STATE/"compose.json"),
+                                   "exec","-T","postgres","psql","-U","multica","-d","multica","-Atc",sql],text=True)
+    if count.strip()!="0":
+        raise RuntimeError("Finish pending VM admin work before switching providers.")
+
+
+def bind_admin(workspace, provider, model):
+    def cli(*args):
+        return json.loads(as_agent("multica","--workspace-id",workspace,*args,"--output","json",
+                                   capture_output=True,text=True).stdout)
+    for _ in range(60):
+        try:
+            daemon_id=cli("daemon","status")["daemon_id"]
+            runtime=next((r for r in cli("runtime","list") if r["daemon_id"]==daemon_id
+                          and r["provider"]==provider_tools.PROVIDERS[provider] and r["status"]=="online"),None)
+            if runtime: break
+        except subprocess.CalledProcessError:
+            pass  # The local daemon is still starting.
+        time.sleep(2)
+    else: raise RuntimeError(f"The admin daemon did not register an online {provider} runtime.")
+    marker=STATE/"admin-agent-id"
+    if marker.exists():
+        agent=cli("agent","get",marker.read_text().strip())
+    else:
+        agent=next((a for a in cli("agent","list") if a["name"] in (NAME,OLD_NAME)),None)
+    target=["--runtime-id",runtime["id"],"--model",model]
+    if agent is None:
+        agent=cli("agent","create","--name",NAME,*target,"--max-concurrent-tasks","1",
+                  "--visibility","private","--instructions",INSTRUCTIONS)
+    else:
+        changes=target if (agent["runtime_id"],agent["model"])!=(runtime["id"],model) else []
+        if agent["name"]==OLD_NAME:
+            changes+=["--name",NAME,"--instructions",INSTRUCTIONS]
+        if changes:
+            require_idle()
+            cli("agent","update",agent["id"],*changes)
+    if not marker.exists():
+        write_atomic(marker,agent["id"]+"\n")
+
+
 def main():
+    import pwd
     os.umask(0o077)
     STATE.mkdir(mode=0o700,exist_ok=True)
     guest.STATE=STATE
-    initial_code = getpass("Initial admin dashboard code (six digits): ") if "--prompt-for-login-code" in sys.argv else None
+    requested=json.load(sys.stdin) if any(flag in sys.argv for flag in ("--select-stdin","--setup-stdin")) else {}
+    setup_code=requested.pop("initial_code",None)
+    reset=requested.pop("use_install_defaults",False)
+    if reset and requested:
+        raise ValueError("Choose install defaults or an explicit provider/model.")
+    explicit=bool(requested) or reset
+    provider,model=(provider_tools.selection(guest.SETTINGS["admin_provider"]) if reset
+                    else provider_tools.selection(**requested))
+    if "--select-stdin" in sys.argv and (STATE/"admin-agent-id").exists() and subprocess.run(
+            ["systemctl","is-active","--quiet","multica-vm-admin.service"]).returncode==0:
+        require_idle()
+        spaces=json.loads(as_agent("multica","workspace","list","--output","json",capture_output=True,text=True).stdout)
+        workspace=next(w for w in spaces if w["slug"]=="vm-administration")
+        configure_runtime(workspace["id"],provider,model,explicit,reset)
+        return
+    initial_code = getpass("Initial admin dashboard code (six digits): ") if "--prompt-for-login-code" in sys.argv else setup_code
     if "--initial-code-stdin" in sys.argv:
         initial_code=sys.stdin.readline().rstrip("\r\n")
     creds=guest.credentials(initial_email=guest.SETTINGS["vm_admin_login_email"], initial_code=initial_code)
     data=guest.render(creds)
-    for provider in guest.PROVIDERS:
-        del data["services"][provider],data["networks"][provider],data["volumes"][provider+"-home"]
+    for daily_provider in guest.PROVIDERS:
+        del data["services"][daily_provider],data["networks"][daily_provider],data["volumes"][daily_provider+"-home"]
     backend=data["services"]["backend"]
     backend["networks"]=["database","web"]
     backend["ports"]=["127.0.0.1:43231:8080"]
@@ -93,8 +157,12 @@ def main():
         as_agent("multica","login","--token",input=pat+"\n",text=True)
     if "--prepare" in sys.argv: return
     if "--auth" in sys.argv:
-        as_agent("codex","login","--device-auth")
+        provider_tools.login(provider,model)
         return
+    configure_runtime(ws["id"],provider,model,explicit,reset)
+
+
+def configure_runtime(workspace, provider, model, explicit, reset):
     if subprocess.run(["systemctl","is-active","--quiet","multica-manual-admin.service"]).returncode == 0:
         guest.run("systemctl","stop","multica-manual-admin.service")
     for unit in ("multica-vm-admin.service","multica-dashboard-home.service"):
@@ -107,29 +175,40 @@ def main():
     except FileNotFoundError:
         # The old process exited during inspection. The service will start the installed binary.
         reconnect = False
-    if reconnect:
-        sql="SELECT count(*) FROM agent_task_queue WHERE status NOT IN ('completed','failed','cancelled')"
-        pending=subprocess.check_output(["docker","compose","-p","multica-owner-only","-f",str(cfg),
-                                         "exec","-T","postgres","psql","-U","multica","-d","multica","-Atc",sql],text=True)
-        if pending.strip()!="0":
-            raise RuntimeError("Finish pending admin work before reconnecting the updated daemon.")
-        guest.run("systemctl","restart",unit)
-    guest.run("systemctl","enable","--now","multica-vm-admin.service","multica-dashboard-home.service")
-    for _ in range(60):
-        runtimes=json.loads(as_agent("multica","--workspace-id",ws["id"],"runtime","list","--output","json",capture_output=True,text=True).stdout)
-        rt=next((r for r in runtimes if r["provider"]=="codex" and r["status"]=="online"),None)
-        if rt: break
-        time.sleep(2)
-    else: raise RuntimeError("Guest administrator runtime did not register.")
-    common=["multica","--workspace-id",ws["id"]]
-    agents=json.loads(as_agent(*common,"agent","list","--output","json",capture_output=True,text=True).stdout)
-    legacy=next((a for a in agents if a["name"]==OLD_NAME),None)
-    if legacy and not any(a["name"]==NAME for a in agents):
-        as_agent(*common,"agent","update",legacy["id"],"--name",NAME,"--instructions",INSTRUCTIONS)
-    elif not any(a["name"]==NAME for a in agents):
-        as_agent(*common,"agent","create","--name",NAME,"--runtime-id",rt["id"],"--model",guest.SETTINGS["worker_model"],
-                 "--max-concurrent-tasks","1","--visibility","private","--instructions",INSTRUCTIONS)
-    print("VM administrator online. Open http://localhost:43130/admin on Windows.")
+    provider_tools.install_tool(provider)
+    envfile=STATE/"admin-runtime.env"
+    previous=envfile.read_text() if envfile.exists() else None
+    desired=f"PATH={provider_tools.tool_dir(provider)}:/usr/bin:/bin\n"
+    if previous!=desired or reconnect or explicit:
+        require_idle()
+    override=STATE/"admin-provider.json"
+    old_override=override.read_text() if override.exists() else None
+    try:
+        if reset:
+            override.unlink(missing_ok=True)
+        elif explicit:
+            write_atomic(override,json.dumps({"provider":provider,"model":model}))
+        if previous!=desired:
+            write_atomic(envfile,desired)
+        if int(pid or 0) and (previous!=desired or reconnect):
+            guest.run("systemctl","restart",unit)
+        guest.run("systemctl","enable","--now",unit,"multica-dashboard-home.service")
+        bind_admin(workspace,provider,model)
+    except BaseException:
+        if explicit:
+            if old_override is None: override.unlink(missing_ok=True)
+            else: write_atomic(override,old_override)
+        if previous!=desired:
+            if previous is None: envfile.unlink(missing_ok=True)
+            else: write_atomic(envfile,previous)
+            if int(pid or 0): guest.run("systemctl","restart",unit)
+        raise
+    print(f"VM administrator online using {provider} / {model}. Open http://localhost:43130/admin on Windows.")
 
 
-if __name__=="__main__": main()
+if __name__=="__main__":
+    import fcntl
+    STATE.mkdir(mode=0o700,exist_ok=True)
+    with (STATE/"provision.lock").open("a") as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        main()

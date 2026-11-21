@@ -98,6 +98,14 @@ Write-Output $Provider
         Assert (($seen -join ',') -eq $case.want) 'Unexpected provider sign-in selection'
     }
     $checks++
+    Copy-Item "$repo/install.ps1" $temporary
+    @'
+param([string]$AdminProvider,[string]$AdminModel,[switch]$SkipProviderLogin)
+"$AdminProvider/$AdminModel/$SkipProviderLogin"
+'@ | Set-Content "$temporary/install-vm.ps1"
+    $forwarded=& "$temporary/install.ps1" -HyperV -AdminProvider agy -AdminModel gemini-3.8-flash-low -SkipProviderLogin
+    Assert ($forwarded -eq 'agy/gemini-3.8-flash-low/True') 'Hyper-V admin selection was not forwarded'
+    $checks++
     Write-Host "$checks installer test groups passed."
 }finally{
     $resolved=[IO.Path]::GetFullPath($temporary)

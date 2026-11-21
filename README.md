@@ -21,6 +21,9 @@ the Ubuntu admin worker start on boot. Setup prints the dashboard links and
 accounts, then asks which providers to sign in to. Press Enter to skip them
 all, or run `./install.ps1 -HyperV -SkipProviderLogin` unattended. Run
 `./hyperv/Connect-Guest.ps1 -Action QuickStart` to see them again.
+The [VM admin provider and model](hyperv/README.md#vm-administrator) default
+to Codex and `gpt-6-luna`. You can select Claude or Agy during setup or
+switch the existing agent later.
 See [dashboard credentials and multi-user setup](hyperv/README.md#dashboard-accounts)
 for the defaults and how to change them. See the [Ubuntu upgrade
 workflow](linux-guest/README.md) and [worker tools](linux-worker/README.md).

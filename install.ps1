@@ -3,6 +3,8 @@
 param(
     [switch]$HyperV,
     [switch]$SkipProviderLogin,
+    [ValidateSet('codex','claude','agy')][string]$AdminProvider,
+    [string]$AdminModel,
     [string]$SettingsFile = (Join-Path $PSScriptRoot 'config/settings.json'),
     [string]$Root = (Join-Path $env:USERPROFILE '.multica/local-ops'),
     [string]$BinRoot = (Join-Path $env:USERPROFILE '.multica/stock-runtime/bin'),
@@ -12,11 +14,13 @@ param(
     [switch]$RenewLocalAuth
 )
 if ($HyperV) {
-    if ($PSBoundParameters.Keys | Where-Object { $_ -notin 'HyperV','SkipProviderLogin' }) { throw 'For VM-specific options run install-vm.ps1 directly.' }
-    & "$PSScriptRoot/install-vm.ps1" -SkipProviderLogin:$SkipProviderLogin
+    if ($PSBoundParameters.Keys | Where-Object { $_ -notin 'HyperV','SkipProviderLogin','AdminProvider','AdminModel' }) { throw 'For VM-specific options run install-vm.ps1 directly.' }
+    $vmOptions=@{} + $PSBoundParameters
+    $vmOptions.Remove('HyperV')
+    & "$PSScriptRoot/install-vm.ps1" @vmOptions
     return
 }
-if ($SkipProviderLogin) { throw 'SkipProviderLogin applies to the Hyper-V installer.' }
+if ($SkipProviderLogin -or $AdminProvider -or $AdminModel) { throw 'Provider options apply to the Hyper-V installer.' }
 . (Join-Path $PSScriptRoot 'scripts/common.ps1')
 . (Join-Path $PSScriptRoot 'scripts/team.ps1')
 if (-not $IsWindows) { throw 'This installer requires native Windows and PowerShell 7.' }

@@ -5,6 +5,8 @@
   "email": "orchestration-trial@example.test",
   "vm_login_email": "user@localhost",
   "vm_admin_login_email": "admin@localhost",
+  "admin_provider": "codex",
+  "admin_models": {"codex": "gpt-6-luna", "claude": "claude-haiku-4-5", "agy": "gemini-3.8-flash-low"},
   "vm_default_login_code": "111111",
   "frontend_port": 43130,
   "backend_port": 43131,

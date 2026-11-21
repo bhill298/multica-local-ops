@@ -22,8 +22,8 @@ creates local keys and an empty workspace. At the end of an interactive
 install, pick any combination of `codex`, `claude`, and `agy`, type `all`,
 or press Enter to skip sign-in. Use `./install.ps1 -HyperV -SkipProviderLogin`
 for unattended setup. Providers can be connected later. The default lead
-and VM admin use Codex, so those agents need Codex credentials before they
-can run. Back up live work separately.
+and VM admin use Codex. The [admin provider](#vm-administrator) can be
+selected independently. Back up live work separately.
 Use `install-vm.ps1 -SourceIso <file>` to reuse verified installation media.
 Pass `-Processors`, `-MaximumGiB`, `-DiskGiB`, `-Keep` or `-SkipProjectDrive`
 to override the host-size defaults, growable disk, checkpoint retention, or
@@ -141,13 +141,7 @@ are `-Action Put -Path <input>`,
 
 ## VM administrator
 
-The installer currently provisions only Codex in the admin workspace. Picking
-Claude or Agy at the provider sign-in prompt connects its daily container.
-There is no installer setting to switch the VM admin agent to either provider.
-The admin dashboard can host another provider once it has its own registered
-runtime in the admin instance.
-
-**VM Admin — Full root access to Ubuntu** is a private, single-task Codex
+**VM Admin — Full root access to Ubuntu** is a private, single-task
 agent. It can administer the VM and Docker. Its instructions ask it to inspect
 current state, perform requested changes, verify results and preserve the two
 workspaces. Setup adds no recurring maintenance jobs. Its daemon runs under
@@ -157,6 +151,38 @@ restarts after a crash. A queued job can execute unattended.
 For maintenance, `./hyperv/Connect-Guest.ps1 -Action AdminStop` stops the
 admin containers and disables the admin worker. Use `-Action Admin` afterward
 to bring them back and restore automatic startup. Daily work stays online.
+
+The installer reads `admin_provider` and the per-provider `admin_models` in
+[settings.json](../config/settings.json). The shipped pairs are Codex /
+`gpt-6-luna`, Claude / `claude-haiku-4-5`, and Agy / `gemini-3.8-flash-low`.
+Codex is the default. For example, to choose Claude during installation:
+
+```powershell
+./install.ps1 -HyperV -AdminProvider claude -AdminModel claude-haiku-4-5
+```
+
+To switch an existing VM, finish pending admin jobs, then run:
+
+```powershell
+./hyperv/Connect-Guest.ps1 -Action AdminAuth -Provider agy
+./hyperv/Connect-Guest.ps1 -Action SetAdminProvider -Provider agy -Model gemini-3.8-flash-low
+./hyperv/Connect-Guest.ps1 -Action QuickStart
+```
+
+`AdminAuth` signs in the Ubuntu admin user; it accepts `codex`, `claude`, or
+`agy`. The interactive daily-provider menu connects Claude and Agy inside
+their respective containers. The host admin has its own Claude and Agy
+logins. Use the same `AdminAuth` command to renew one. Exit Agy after login.
+
+The switch binds the existing admin agent to the selected runtime on its
+own daemon and updates its model. The agent ID and issue history stay in the
+admin workspace. The local choice in `/var/lib/multica-owner-only/admin-provider.json`
+survives reboot and reprovision. Omit `-Model` to use that provider's
+configured default. To discard the override and follow the install defaults:
+
+```powershell
+./hyperv/Connect-Guest.ps1 -Action SetAdminProvider -UseInstallDefaults
+```
 
 ### Sign in or renew a provider from Windows
 
@@ -207,6 +233,25 @@ The installer has no global worker endpoint or API-key prompt. The backend's
 `MULTICA_LLM_BASE_URL` and `MULTICA_LLM_API_KEY` configure server features
 such as chat titles and follow-up suggestions. Worker runs use the provider
 CLI's configuration. [Server settings](https://multica.ai/docs/environment-variables)
+
+The same controls are available on the **admin dashboard**. Open the managed
+agent's **Settings → Environment** for the key and **Settings → Custom Args**
+for provider options. For example, Codex accepts `-c` followed by
+`model_providers.gateway.base_url="https://your-gateway.example/v1"` as two
+arguments. Define the provider name, `env_key` and Responses protocol there
+as well, select it with `model_provider="gateway"`, and choose a model the
+gateway serves. This agent runs on Ubuntu, so its loopback address reaches
+services on the VM. Switching providers preserves these per-agent settings;
+review provider-specific arguments when changing CLIs. A later installer
+reconciliation reapplies the configured admin model.
+
+In the live tests, the same private admin agent ran a maintenance issue under
+Claude Haiku (`ADMIN-3`) and Agy Gemini 3.8 Flash Low (`ADMIN-4`), each after
+an Ubuntu reboot. Both returned the independently checked boot ID, UID 0
+from `sudo -n id -u`, and an active admin service. After returning to Codex,
+a temporary private admin agent completed `ADMIN-5` through a loopback
+Responses endpoint. The endpoint verified the synthetic bearer key supplied
+in the agent's environment. The temporary agent was archived.
 
 ### Automatic startup test, November 20, 2026
 

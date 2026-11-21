@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from guest import SETTINGS, STATE
+from admin_provider import selection
 
 
 def describe(state, initial_email):
@@ -16,7 +17,9 @@ def describe(state, initial_email):
 
 
 if __name__ == "__main__":
+    provider, model = selection()
     print(json.dumps({
         "daily": describe(STATE, SETTINGS["vm_login_email"]),
-        "admin": describe(Path("/var/lib/multica-owner-only"), SETTINGS["vm_admin_login_email"]),
+        "admin": {**describe(Path("/var/lib/multica-owner-only"), SETTINGS["vm_admin_login_email"]),
+                  "provider": provider, "model": model},
     }))

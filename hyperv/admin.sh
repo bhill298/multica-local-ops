@@ -4,8 +4,8 @@ cd /opt/multica-local/hyperv
 case "${1:-}" in
   start) shift; exec python3 admin.py "$@" ;;
   auth)
-    if [[ $# -eq 1 && -x /opt/multica-owner-bin/codex ]]; then
-      exec runuser -u multica-vm-admin -- /opt/multica-owner-bin/codex login --device-auth
+    if [[ $# -eq 1 ]]; then
+      exec python3 admin_provider.py auth
     fi
     shift; exec python3 admin.py --auth "$@" ;;
   stop)

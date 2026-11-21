@@ -1,10 +1,11 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
-    [switch]$PromptForLoginCode,[switch]$DailyOnly)
+    [switch]$PromptForLoginCode,[switch]$DailyOnly,[string]$Model,
+    [ValidateSet('codex','claude','agy')][string]$AdminProvider,[switch]$UseInstallDefaults)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
@@ -39,10 +40,16 @@ switch ($Action) {
                 ssh @opts $target $provision
             }
             $adminSetup='sudo python3 /opt/multica-local/hyperv/admin.py'
+            $adminOptions=@{}
+            if ($AdminProvider) { $adminOptions.provider=$AdminProvider }
+            if ($Model) { $adminOptions.model=$Model }
             if ($PromptForLoginCode) {
                 $code=Read-Host 'Initial admin dashboard code (six digits)' -MaskInput
                 if ($code -cnotmatch '^[0-9]{6}$') { throw 'Enter a six-digit code.' }
-                $code | ssh @opts $target "$adminSetup --initial-code-stdin"
+                $adminOptions.initial_code=$code
+            }
+            if ($adminOptions.Count) {
+                $adminOptions | ConvertTo-Json -Compress | ssh @opts $target "$adminSetup --setup-stdin"
             } else {
                 ssh @opts $target $adminSetup
             }
@@ -73,9 +80,12 @@ Sign in or renew a provider from Windows. Codex signs in once for both workers:
   $helper -Action Auth -Provider agy
 
 VM admin dashboard http://localhost:43130/admin  (full Ubuntu access)
+Worker             $($logins.admin.provider) / $($logins.admin.model)
 Email              $($logins.admin.email)
 PIN                $adminPin
 Both instances and the VM admin worker start with Ubuntu.
+For a Claude or Agy admin worker, sign in separately as the Ubuntu admin user:
+  $helper -Action AdminAuth
 "@
     }
     Goal { $Goal | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/new-goal.py' }
@@ -114,9 +124,26 @@ Both instances and the VM admin worker start with Ubuntu.
         $store=if ($Action -eq 'AdminCode') {'multica-owner-only'} else {'multica-local'}
         ssh @opts $target ("sudo python3 -c 'import json;print(json.load(open(`"/var/lib/{0}/credentials.json`"))[`"code`"])'" -f $store)
     }
-    { $_ -in 'Admin','AdminAuth' } {
-        $mode=if ($Action -eq 'Admin') { 'start' } else { 'auth' }
-        $command="sudo bash /opt/multica-local/hyperv/admin.sh $mode"
+    AdminAuth {
+        $command='sudo python3 /opt/multica-local/hyperv/admin_provider.py auth'
+        if ($PSBoundParameters.ContainsKey('Provider')) { $command+=" --provider $Provider" }
+        ssh @opts -t $target $command
+    }
+    SetAdminProvider {
+        $selection=@{}
+        if ($UseInstallDefaults) {
+            if ($PSBoundParameters.ContainsKey('Provider') -or $PSBoundParameters.ContainsKey('Model')) {
+                throw 'UseInstallDefaults cannot be combined with Provider or Model.'
+            }
+            $selection.use_install_defaults=$true
+        } elseif ($PSBoundParameters.ContainsKey('Provider')) {
+            $selection.provider=$Provider
+        } else { throw 'Specify -Provider codex, claude or agy, or -UseInstallDefaults.' }
+        if ($PSBoundParameters.ContainsKey('Model')) { $selection.model=$Model }
+        $selection | ConvertTo-Json -Compress | ssh @opts $target 'sudo python3 /opt/multica-local/hyperv/admin.py --select-stdin'
+    }
+    Admin {
+        $command='sudo bash /opt/multica-local/hyperv/admin.sh start'
         if ($PromptForLoginCode) { $command+=' --prompt-for-login-code' }
         ssh @opts -t $target $command
     }
