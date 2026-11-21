@@ -14,6 +14,21 @@ try {
         Assert (-not $parseErrors) "Parse error: $($file.Name)"
     }
     $checks++
+    . "$repo/hyperv/Portal-Hosts.ps1"
+    $hostsFixture=Join-Path $temporary hosts
+    $originalHosts="# existing comment`r`n127.0.0.1 existing.test`r`n"
+    [IO.File]::WriteAllText($hostsFixture,$originalHosts)
+    $hostId=[guid]::NewGuid()
+    Set-PortalHosts -Id $hostId -Prefix multica -Path $hostsFixture
+    $first=[IO.File]::ReadAllText($hostsFixture)
+    Set-PortalHosts -Id $hostId -Prefix multica -Path $hostsFixture
+    Assert ($first -ceq [IO.File]::ReadAllText($hostsFixture)) 'Reinstall duplicated a hosts block'
+    $why=''
+    try { Set-PortalHosts -Id ([guid]::NewGuid()) -Prefix multica -Path $hostsFixture } catch { $why=$_.Exception.Message }
+    Assert ($why -match 'already exists') 'Other installations could take the same hostname'
+    Set-PortalHosts -Id $hostId -Prefix multica -Remove -Path $hostsFixture
+    Assert ($originalHosts -ceq [IO.File]::ReadAllText($hostsFixture)) 'Uninstall changed unrelated hosts entries'
+    $checks++
     $portsDir=Join-Path $temporary ports
     $null=New-Item -ItemType Directory -Path $portsDir
     Copy-Item "$repo/hyperv/Get-InstallPorts.ps1" $portsDir

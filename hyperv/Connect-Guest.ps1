@@ -1,7 +1,7 @@
 #Requires -Version 7.3
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','LoginCode','AdminCode','Shell','Auth','SyncProviderAuth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
+    [ValidateSet('Provision','QuickStart','Goal','UI','AdminUI','Manage','LoginCode','AdminCode','Shell','Auth','SyncProviderAuth','SyncCodexAuth','Put','PutExchange','Get','MapProjects','Status','Admin','SetAdminProvider','AdminAuth','AdminStop')][string]$Action='Status',
     [ValidateSet('codex','claude','agy')][string]$Provider='codex',
     [string]$Path,[hashtable]$Goal,[ipaddress]$GuestAddress,[ValidateRange(1024,65535)][int]$LocalPort=43130,
     [switch]$PromptForLoginCode,[switch]$DailyOnly,[string]$Model,
@@ -19,6 +19,25 @@ if (Test-Path -LiteralPath $relayConfig) {
     if ($installedRelay.name -eq $Name) { $homePort=if ($installedRelay.ports) { $installedRelay.ports.home } else { 43130 } }
 }
 $key=Join-Path $operatorDir keys/operator
+$homeUrl="http://localhost:$homePort"
+$dailyUrl="$homeUrl/user"
+$adminUrl="$homeUrl/admin"
+$portalConfig=Join-Path $operatorDir 'portal/portal.json'
+if (Test-Path $portalConfig) {
+    $pc=Get-Content $portalConfig -Raw | ConvertFrom-Json
+    if ($pc.name -ne $Name) {throw 'Wrong operator profile for this VM.'}
+    $suffix=if ($pc.port -ne 80){":$($pc.port)"}
+    $homeUrl="http://$($pc.prefix).localhost$suffix"
+    $dailyUrl="http://$($pc.prefix)-user.localhost$suffix"
+    $adminUrl="http://$($pc.prefix)-admin.localhost$suffix"
+}
+if ($Action -eq 'Manage') {
+    if (!$pc) {throw 'Install the Windows management portal first.'}
+    $pair=Join-Path $operatorDir portal/open-management.html
+    if (!(Test-Path -LiteralPath $pair)){throw 'Repair the Windows portal with Install-Portal.ps1.'}
+    Start-Process ([uri]::new($pair).AbsoluteUri)
+    return
+}
 $known=Join-Path $operatorDir known_hosts
 $address=if ($GuestAddress) { $GuestAddress.IPAddressToString } else { $state.address }
 if (!$address) { throw 'Guest address discovery pending. See the provisioning log or specify -GuestAddress.' }
@@ -74,9 +93,10 @@ switch ($Action) {
         @"
 
 Multica quick start
-Open http://localhost:$homePort in Windows and choose a workspace.
+Open $homeUrl in Windows and choose a workspace.
+Manage the VM: open '$Name Management' in Windows Start, or run $helper -Action Manage
 
-Daily dashboard    http://localhost:$homePort/user
+Daily dashboard    $dailyUrl
 Email              $($logins.daily.email)
 PIN                $dailyPin
 Open the dashboard, enter the email, request a code, then enter the PIN.
@@ -85,7 +105,7 @@ Sign in or renew each provider once for its admin and daily workers:
   $helper -Action Auth -Provider claude
   $helper -Action Auth -Provider agy
 
-VM admin dashboard http://localhost:$homePort/admin  (full Ubuntu access)
+VM admin dashboard $adminUrl  (full Ubuntu access)
 Worker             $($logins.admin.provider) / $($logins.admin.model)
 Email              $($logins.admin.email)
 PIN                $adminPin
@@ -123,8 +143,8 @@ To reuse a current admin login without a browser prompt, for example:
     }
     { $_ -in 'UI','AdminUI' } {
         if (!$PSBoundParameters.ContainsKey('LocalPort')) {
-            $pathName=if ($Action -eq 'AdminUI') { 'admin' } else { 'user' }
-            Write-Output "Open http://localhost:$homePort/$pathName"
+            $url=if ($Action -eq 'AdminUI') { $adminUrl } else { $dailyUrl }
+            Write-Output "Open $url"
             return
         }
         $remotePort=if ($Action -eq 'AdminUI') {43230} else {43130}

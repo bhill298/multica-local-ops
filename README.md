@@ -16,8 +16,11 @@ release. See [update, restore and backup cleanup](docs/update-multica.md).
 
 For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
 and follow the [VM operating guide](hyperv/README.md). Open
-[Multica dashboards](http://localhost:43130) from Windows. Both instances and
-the Ubuntu admin worker start on boot. Setup prints the dashboard links and
+[Multica dashboards](http://multica.localhost) from Windows. Open **Multica-Ubuntu
+Management** in Windows Start to manage power, boot startup and updates.
+The management page stays up while the guest is off. Existing installations can add the portal with
+`./hyperv/Install-Portal.ps1`. To preview removal, run `./uninstall-vm.ps1`.
+Both instances and the Ubuntu admin worker start on boot. Setup prints the dashboard links and
 accounts, then asks which providers to sign in to. One sign-in per selected
 provider connects its daily and admin workers. Press Enter to skip them
 all, or run `./install.ps1 -HyperV -SkipProviderLogin` unattended. Run

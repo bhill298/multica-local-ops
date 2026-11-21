@@ -1,5 +1,11 @@
 # Update Multica in the Ubuntu VM
 
+For the Windows UI, open **Multica-Ubuntu Management** in Start and choose
+**Check for updates** or **Install latest stable release**. The portal checks
+both queues, pauses the admin plane for an upgrade, runs the updater below
+and brings the admin plane back. The command-line procedure covers explicit
+release selection, restore and backup cleanup.
+
 From the repo root, run `./update-vm.ps1` to see the installed commit and the
 latest stable upstream release. This also checks whether GitHub Container
 Registry has published both images. To review an exact release, use

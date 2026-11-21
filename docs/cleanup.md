@@ -1,5 +1,9 @@
 # Cleanup outside the temporary workspace
 
+To remove the current Hyper-V installation, preview `./uninstall-vm.ps1`.
+The [VM uninstall guide](../hyperv/README.md#uninstall-the-hyper-v-deployment)
+explains the disk retention option and which backups are deleted.
+
 ## After moving to the Hyper-V VM
 
 The native retirement described below was completed on November 20, 2026.

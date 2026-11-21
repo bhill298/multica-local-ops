@@ -36,6 +36,7 @@ foreach ($port in $values) {
                 $managed=$process.ExecutablePath -eq "$env:SystemRoot\System32\OpenSSH\ssh.exe" -and
                     $process.CommandLine -and $process.CommandLine.Contains("HostKeyAlias=$Name ") -and
                     $process.CommandLine.Contains("$profileDir/keys/operator") -and $process.CommandLine.Contains(' -NT ')
+                if ($port -eq $ports.home -and $process.ExecutablePath -eq (Join-Path $profileDir 'portal/multica-portal.exe')) { $managed=$true }
             }
         }
         if (!$managed) { throw "Dashboard port $port is in use or reserved by Windows. Choose bindable ports in hyperv/dashboard-ports.json." }

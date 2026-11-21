@@ -3,10 +3,15 @@
 param([Parameter(Mandatory)][guid]$VMId,[switch]$WaitForAddress)
 $ErrorActionPreference='Stop'
 $vm=Get-VM -Id $VMId
-if ($vm.State -ne 'Running') { return }
 $path=Join-Path $PSScriptRoot vm.json
 $state=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
 if ($state.id -ne "$VMId" -or $state.phase -ne 'installed') { throw 'Guest identity or installation phase mismatch.' }
+$boot=Get-ScheduledTask -TaskName "$($vm.Name) unattended boot" -ErrorAction SilentlyContinue
+$report=Join-Path $PSScriptRoot host-status.json
+$tmpStatus=Join-Path $PSScriptRoot "status-$PID.tmp"
+@{vm=$vm.State.ToString();id="$VMId";boot=if (!$boot){'unknown'}elseif($boot.State -eq 'Disabled'){'disabled'}else{'enabled'};checked=[datetime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content $tmpStatus
+if (Test-Path $report) { [IO.File]::Replace($tmpStatus,$report,[NullString]::Value) } else { Move-Item -LiteralPath $tmpStatus -Destination $report -Force }
+if ($vm.State -ne 'Running') { return }
 $limit=[datetime]::UtcNow.AddMinutes(8)
 do {
     $nic=Get-VMNetworkAdapter -VM $vm

@@ -109,11 +109,99 @@ on the same hostname.
 
 ## Daily use
 
-Open **http://localhost:43130** in Windows and choose a dashboard. The Windows
-logon task forwards three loopback ports over one SSH connection. The VM starts
-at host boot via a separate SYSTEM task. Ubuntu starts Docker, both Multica
-instances, their workers, and the small landing page. Docker Desktop is used
-for media preparation only. Reserve Windows ports 43130, 43133 and 43230.
+Open **http://multica.localhost** from Windows. The old bookmark at
+http://localhost:43130 also works. At Windows sign-in a limited-user task
+starts the portal and a second task opens the two SSH forwards to Ubuntu.
+The VM has its own SYSTEM task for boot, before Windows sign-in. Ubuntu
+starts Docker, both Multica instances and their workers.
+
+The portal listens on Windows IPv4 loopback. It routes requests by hostname
+and keeps the two app logins on separate origins. Setup adds one marked block
+to the Windows hosts file. It uses neither IP Helper nor netsh portproxy.
+By default the main installation needs ports 80, 43130, 43133 and 43230.
+If port 80 is taken, use `./install-vm.ps1 -WebPort 8080` or run
+`./hyperv/Install-Portal.ps1 -WebPort 8080` on an existing VM. Setup prints
+the resulting URL. Secondary installations use their VM name and their
+configured home port by default. The portal builds with local Go or with
+a Linux Docker Desktop build container. It runs directly on Windows afterward.
+
+### Windows management
+
+Open **Multica-Ubuntu Management** in Windows Start once per browser profile,
+or run `./hyperv/Connect-Guest.ps1 -Action Manage`. Then bookmark
+http://multica.localhost/manage. This pairs the browser to your Windows
+operator account. Clearing site storage removes the pairing. The six-digit
+Multica PIN signs in to a workspace and cannot authorize Windows actions.
+
+The management page shows Hyper-V power state, boot autostart, individual
+worker registrations and running or stopped Compose containers with their
+images. The host refresh task samples power state at two-minute intervals.
+Portal power actions also refresh it immediately. While the page is open it
+refreshes guest data every minute. An offline runtime for a previously used
+admin provider can remain in Multica's runtime history.
+
+Shut down and Restart check both queues for unfinished work, then ask Hyper-V
+for a graceful guest shutdown. Docker stops with Ubuntu. The Windows portal
+stays available and Start brings the VM back. Changing boot autostart leaves
+the current power state alone. Windows can show UAC when you request a
+privileged operation. Ordinary dashboard use, status and update checks run
+as the signed-in user.
+
+Check for updates compares the installed pins with upstream's stable release
+and registry images while Ubuntu is running. Install checks again, pauses the
+idle admin workspace, and uses the same checkpoint, export and migration as
+`update-vm.ps1`. It restores the admin workspace after a successful upgrade.
+An interrupted migration requires inspection of the update receipt before
+restarting the admin plane. Allow a maintenance window for an actual upgrade.
+[Update backups and recovery](../docs/update-multica.md)
+
+The private portal binary, pairing file and operator key live under
+`%LOCALAPPDATA%\MulticaVM\portal`. Privileged scripts and the installation
+record live under `%ProgramFiles%\MulticaVM\Multica-Ubuntu\portal`. The
+Start shortcut opens the private pairing file. Keep that file and the key
+with your other operator credentials.
+
+**November 21 verification.** After a physical Windows reboot we verified
+the original dashboard endpoints, containers and project drive. After
+installing the portal we signed into both named dashboards in the same Edge
+profile, paired the management page and checked the upstream release.
+We disabled and re-enabled boot autostart, shut down the guest, started it
+again and tested Restart. With the VM off, launching the registered Windows
+logon task brought up the management page. Running the registered SYSTEM boot
+task then restored four online runtimes, nine containers, both named dashboards
+and the Z: drive. That last check exercised the actual tasks without a second
+Windows reboot. The installed release was already current, so the portal
+exercised its no-update path. The earlier migration test covers the updater.
+
+### Uninstall the Hyper-V deployment
+
+From your normal PowerShell 7 session, run `./uninstall-vm.ps1` for a
+preview. Run **one** of these commands to apply it:
+
+```powershell
+./uninstall-vm.ps1 -Apply -KeepDisk
+./uninstall-vm.ps1 -Apply
+```
+
+Both commands remove the VM registration, checkpoints, update exports,
+scheduled tasks, owned hosts block, portal, shortcut, drive mapping and
+generated media. Copy out any exports or project files you need first.
+**KeepDisk** merges the checkpoints into the standalone system VHDX in
+the configured Hyper-V disk directory. It also keeps the operator SSH key
+and known-hosts file. The VHDX contains the guest's databases, files,
+containers and provider logins. To recover it, attach the disk to a
+Generation 2 VM and restore its network policy before connecting it.
+Without **KeepDisk**, uninstall deletes that data and the operator key.
+
+Use the installation's `-Name` and `-Directory` for a secondary VM.
+The last installation removes its unused media-builder image if the local
+Docker engine is available. Other Docker workloads and shared base images
+are left alone.
+
+`hyperv/Test-Uninstall.ps1` exercises both disk choices with disposable
+empty VMs and real checkpoints. It checks that an unrelated operator file
+survives. The retained-disk case also installs a second Windows portal and
+verifies removal of its shortcut, tasks, hosts entry and portal directory.
 
 Run these commands from the repository root:
 
@@ -130,12 +218,15 @@ Run these commands from the repository root:
 
 | Dashboard | Windows URL | Default email | Default PIN | When to use it |
 | --- | --- | --- | --- | --- |
-| Daily | http://localhost:43130/user | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
-| VM admin | http://localhost:43130/admin | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. The admin worker can use sudo. |
+| Daily | http://multica-user.localhost | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
+| VM admin | http://multica-admin.localhost | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. The admin worker can use sudo. |
 
-The two links redirect to `http://localhost:43133` and
-`http://127.0.0.1:43230`. The different hostnames keep the two browser
-sessions separate. The landing page serves only links and redirects.
+The previous direct addresses `http://localhost:43133` and
+`http://127.0.0.1:43230` still work. Sign in once at the new hostnames
+to establish separate daily and admin cookies there. The proxy translates
+browser origins and HTTP redirects to and from those direct addresses.
+Multica still has the direct addresses in its guest configuration, so an
+absolute URL generated inside application content can use the older bookmark.
 
 Open the URL, enter the email, request a verification code, then enter the PIN.
 No email is sent. Setup also requests a code when it enrolls each workspace.

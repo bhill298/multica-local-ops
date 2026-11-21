@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([string]$Name='Multica-Ubuntu',[string]$SourceIso,
     [string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",
-    [int]$Processors,[int]$MaximumGiB,[ValidateRange(40,2048)][int]$DiskGiB=128,
+    [int]$Processors,[int]$MaximumGiB,[ValidateRange(40,2048)][int]$DiskGiB=128,[ValidateRange(1,65535)][int]$WebPort,
     [ValidateRange(1,52)][int]$Keep=4,[switch]$SkipProjectDrive,
     [ValidateSet('On','Off')][string]$NestedVirtualization,[switch]$PromptForLoginCode,[switch]$SkipProviderLogin,
     [ValidateSet('codex','claude','agy')][string]$AdminProvider,[string]$AdminModel)
@@ -29,7 +29,9 @@ $adminOptions=@{}
 if ($AdminProvider) { $adminOptions.AdminProvider=$AdminProvider }
 if ($AdminModel) { $adminOptions.Model=$AdminModel }
 & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action Provision -PromptForLoginCode:$PromptForLoginCode @adminOptions
-& "$PSScriptRoot/hyperv/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive
+$webOptions=@{}
+if ($WebPort){$webOptions.WebPort=$WebPort}
+& "$PSScriptRoot/hyperv/Install-Portal.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive @webOptions
 if (!$SkipProjectDrive) { & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action MapProjects }
 & "$PSScriptRoot/hyperv/Connect-Guest.ps1" -Name $Name -Directory $Directory -Action QuickStart
 if (!$SkipProviderLogin -and [Environment]::UserInteractive -and ![Console]::IsInputRedirected) {

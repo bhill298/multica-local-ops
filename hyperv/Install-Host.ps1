@@ -88,7 +88,9 @@ $action=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/WindowsPowerS
 $trigger=New-ScheduledTaskTrigger -Weekly -DaysOfWeek $CheckpointDay -At $CheckpointAt
 Register-ScheduledTask -TaskName "$Name managed checkpoints" -Action $action -Trigger $trigger -User SYSTEM -RunLevel Highest -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew) -Force | Out-Null
 $bootAction=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -VMId {1}' -f "$root/Start-Guest.ps1",$vm.Id)
+$bootDisabled=(Get-ScheduledTask -TaskName "$Name unattended boot" -ErrorAction SilentlyContinue).State -eq 'Disabled'
 Register-ScheduledTask -TaskName "$Name unattended boot" -Action $bootAction -Trigger (New-ScheduledTaskTrigger -AtStartup) -User SYSTEM -RunLevel Highest -Settings (New-ScheduledTaskSettingsSet -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable -MultipleInstances IgnoreNew) -Force | Out-Null
+if ($bootDisabled) { Disable-ScheduledTask -TaskName "$Name unattended boot" | Out-Null }
 & "$root/Start-Guest.ps1" -VMId $vm.Id
 $syncAction=New-ScheduledTaskAction -Execute "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "{0}" -VMId {1}' -f "$root/Sync-GuestAddress.ps1",$vm.Id)
 $syncTrigger=New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(10) -RepetitionInterval (New-TimeSpan -Minutes 2)

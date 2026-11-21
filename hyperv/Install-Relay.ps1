@@ -1,4 +1,4 @@
-param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",[switch]$SkipProjectDrive)
+param([string]$Name='Multica-Ubuntu',[string]$Directory="$env:LOCALAPPDATA/MulticaVM/media",[switch]$SkipProjectDrive,[switch]$Portal)
 $ErrorActionPreference='Stop'
 if ($Name -notmatch '^[A-Za-z0-9-]{1,50}$') { throw 'Invalid VM name.' }
 $ports=& "$PSScriptRoot/Get-InstallPorts.ps1" -Name $Name -Directory $Directory
@@ -8,7 +8,9 @@ $null=New-Item -ItemType Directory -Force -Path $dir
 $relay=Join-Path $dir UI-Relay.ps1
 Copy-Item "$PSScriptRoot/UI-Relay.ps1" $relay -Force
 $config=Join-Path $dir relay.json
-@{name=$Name;state="$env:ProgramFiles/MulticaVM/$Name/vm.json";key="$profileDir/keys/operator";known="$profileDir/known_hosts";ports=$ports} | ConvertTo-Json | Set-Content $config
+$portalConfig=Join-Path $profileDir portal/portal.json
+$Portal=$Portal -or (Test-Path $portalConfig)
+@{name=$Name;state="$env:ProgramFiles/MulticaVM/$Name/vm.json";key="$profileDir/keys/operator";known="$profileDir/known_hosts";ports=$ports;portal=[bool]$Portal} | ConvertTo-Json | Set-Content $config
 $cmd='powershell.exe -NoLogo -NoProfile -NonInteractive -File "{0}" -Config "{1}"' -f $relay,$config
 $vbs=Join-Path $dir relay.vbs
 ('WScript.Quit CreateObject("WScript.Shell").Run("{0}", 0, True)' -f $cmd.Replace('"','""')) | Set-Content $vbs -Encoding Unicode
@@ -34,6 +36,14 @@ foreach ($child in Get-CimInstance Win32_Process -Filter "Name='ssh.exe'") {
 }
 Register-ScheduledTask -TaskName $taskName -Trigger $trigger -Action $action -Principal $principal -Settings $settings -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
+$routes=@{user="http://localhost:$($ports.daily)/login";admin="http://127.0.0.1:$($ports.admin)/login"}
+if ($Portal) {
+    $pc=Get-Content $portalConfig -Raw | ConvertFrom-Json
+    $suffix=if ($pc.port -ne 80) { ":$($pc.port)" }
+    foreach ($kind in 'user','admin') { $routes[$kind]="http://$($pc.prefix)-$kind.localhost$suffix/login" }
+    Start-ScheduledTask -TaskName "$Name management portal"
+}
+$checkApps=$Portal -and (Get-Content "$env:ProgramFiles/MulticaVM/$Name/host-status.json" -Raw | ConvertFrom-Json).vm -eq 'Running'
 $handler=[Net.Http.HttpClientHandler]::new()
 $handler.AllowAutoRedirect=$false
 $handler.UseProxy=$false
@@ -43,11 +53,15 @@ try {
     $deadline=[datetime]::UtcNow.AddSeconds(45)
     do {
         $ready=$true
-        foreach ($route in @{user="http://localhost:$($ports.daily)/login";admin="http://127.0.0.1:$($ports.admin)/login"}.GetEnumerator()) {
+        foreach ($route in $routes.GetEnumerator()) {
             try {
                 $response=$http.GetAsync("http://127.0.0.1:$($ports.home)/$($route.Key)").GetAwaiter().GetResult()
                 try { $ready=$ready -and [int]$response.StatusCode -eq 302 -and $response.Headers.Location.AbsoluteUri -eq $route.Value }
                 finally { $response.Dispose() }
+                if ($checkApps) {
+                    $app=$http.GetAsync($route.Value).GetAwaiter().GetResult()
+                    try { $ready=$ready -and $app.IsSuccessStatusCode } finally { $app.Dispose() }
+                }
             } catch { $ready=$false }
         }
         if ($ready) { break }

@@ -2,6 +2,7 @@
 [CmdletBinding(DefaultParameterSetName='Plan')]
 param(
     [Parameter(ParameterSetName='Plan')][switch]$Plan,
+    [Parameter(ParameterSetName='Plan')][switch]$PassThru,
     [Parameter(Mandatory,ParameterSetName='Apply')][switch]$Apply,
     [Parameter(Mandatory,ParameterSetName='Restore')][switch]$Restore,
     [Parameter(Mandatory,ParameterSetName='Clear')][switch]$Clear,
@@ -61,6 +62,10 @@ function Show-Backup {
 if ($Apply -or $Plan -or $PSCmdlet.ParameterSetName -eq 'Plan') {
     $old=Invoke-GuestUpdate @('status') | ConvertFrom-Json
     $next=Get-ReleasePins
+    if ($PassThru) {
+        return [pscustomobject]@{tag=$next.tag;current=$old.commit;target=$next.commit;available=(
+            $old.commit -ne $next.commit -or $old.backend -ne $next.backend -or $old.frontend -ne $next.frontend)}
+    }
     Write-Host "Installed commit: $($old.commit)"
     Write-Host "Target $($next.tag): $($next.commit)"
     Write-Host "Backend: $($next.backend)"
