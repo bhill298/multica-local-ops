@@ -104,6 +104,7 @@ def render(creds, kvm_gid=None):
                "JWT_SECRET": creds["jwt"], "PORT":"8080","APP_ENV":"development",
                "AUTH_TOKEN_TTL":SETTINGS["auth"]["token_ttl"],"MULTICA_DEV_VERIFICATION_CODE":creds["code"],
                "ALLOWED_EMAILS":creds.get("email", SETTINGS["email"]),"ALLOW_SIGNUP":"true","DO_NOT_TRACK":"1",
+               "ANALYTICS_DISABLED":"true",
                "MULTICA_APP_URL":ui,"FRONTEND_ORIGIN":ui,"CORS_ALLOWED_ORIGINS":ui}}
     frontend = {"image":images["frontend"], "networks":["web"], "ports":[f"127.0.0.1:{PORT}:3000"],
                 "environment":{"REMOTE_API_URL":"http://backend:8080","HOSTNAME":"0.0.0.0","NEXT_PUBLIC_API_URL":"","NEXT_PUBLIC_WS_URL":""}}
@@ -137,6 +138,13 @@ def cli(provider, *args, **kwargs):
     return dc("exec","-T",provider,"multica",*args,**kwargs)
 
 
+def set_owner_prompt_defaults(project, state, email):
+    sql = (ROOT / "hyperv/owner-prompt-defaults.sql").read_text()
+    run("docker", "compose", "-p", project, "-f", str(state / "compose.json"),
+        "exec", "-T", "postgres", "psql", "-Xq", "-U", "multica", "-d", "multica",
+        "-v", "ON_ERROR_STOP=1", "-v", "owner_email=" + email, "-f", "-", input=sql, text=True)
+
+
 def enroll(creds):
     email=creds.get("email", SETTINGS["email"])
     for i in range(90):
@@ -154,6 +162,7 @@ def enroll(creds):
                                               "context":"Delegate work across Linux project workers and verify artifacts."})
     if not api("/api/me",token).get("onboarded_at"):
         api("/api/me/onboarding/complete",token,{"completion_path":"skip_existing","workspace_id":workspace["id"]})
+    set_owner_prompt_defaults("multica-vm", STATE, email)
     for provider in PROVIDERS:
         if dc_probe(provider): continue
         pat=api("/api/tokens/",token,{"name":f"VM {provider} daemon","expires_in_days":90})["token"]

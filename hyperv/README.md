@@ -81,6 +81,13 @@ for `auth.token_ttl` (87,600 hours, or 3,650 days). In Edge the auth cookie
 lasted up to 400 days and the web app's login marker up to 365 days. A browser
 that clears or expires its cookies can ask you to sign in sooner.
 
+Setup marks unanswered role, use-case and referral questions as skipped for
+the daily and admin owners. Existing answers stay in place. On releases with
+the GitHub-star prompt, setup sets its display counter to the v0.11.1 limit
+of two. It leaves the star-click timestamp alone. Both backends set
+`DO_NOT_TRACK=1` and `ANALYTICS_DISABLED=true`. The web containers ship
+without a Google Analytics measurement ID. [Upstream analytics settings](https://multica.ai/docs/environment-variables#observability-and-analytics)
+
 **Choose different credentials on a fresh install.** Edit `vm_login_email` and
 `vm_admin_login_email` in [settings.json](../config/settings.json). The shared
 development default is `vm_default_login_code`. For private, per-account PINs,

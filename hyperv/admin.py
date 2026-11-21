@@ -85,6 +85,7 @@ def main():
     if not ws: ws=guest.api("/api/workspaces",token,{"name":"VM administration","slug":"vm-administration","issue_prefix":"ADMIN"},base=BASE)
     if not guest.api("/api/me",token,base=BASE).get("onboarded_at"):
         guest.api("/api/me/onboarding/complete",token,{"completion_path":"skip_existing","workspace_id":ws["id"]},base=BASE)
+    guest.set_owner_prompt_defaults("multica-owner-only", STATE, email)
     if not (Path(pwd.getpwnam(USER).pw_dir)/".multica/config.json").exists():
         pat=guest.api("/api/tokens/",token,{"name":"Owner-only VM administrator","expires_in_days":90},base=BASE)["token"]
         as_agent("multica","config","set","server_url",BASE)
