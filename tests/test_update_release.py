@@ -72,6 +72,21 @@ class UpdateTests(unittest.TestCase):
                 release.main(["stage","latest","bad","bad"])
             build.assert_not_called()
 
+    def test_stage_requires_release_version_and_matching_commit(self):
+        (release.ROOT / "hyperv").mkdir()
+        dockerfile = Path(__file__).resolve().parents[1] / "hyperv/provider.Dockerfile"
+        (release.ROOT / "hyperv/provider.Dockerfile").write_text(dockerfile.read_text())
+        for version, commit, ok in (("dev", "bbbbbbb", False), ("0.11.1", "", False),
+                                    ("0.11.1", "ccccccc", False), ("0.11.1", "bbbbbbb", True)):
+            with self.subTest(version=version, commit=commit), patch.object(release, "idle"), \
+                    patch.object(release.subprocess, "run"), patch.object(release, "output", side_effect=lambda *args:
+                        "image" if "inspect" in args else json.dumps({"version": version, "commit": commit})):
+                if ok:
+                    release.stage(self.target)
+                else:
+                    with self.assertRaisesRegex(RuntimeError, "does not identify"):
+                        release.stage(self.target)
+
 
 if __name__ == "__main__":
     unittest.main()

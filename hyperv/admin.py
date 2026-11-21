@@ -1,4 +1,5 @@
 """Provision the guest administrator and its independent Multica queue."""
+import filecmp
 import json
 from getpass import getpass
 import os
@@ -99,6 +100,20 @@ def main():
     for unit in ("multica-vm-admin.service","multica-dashboard-home.service"):
         guest.run("install","-m","0644",str(guest.ROOT/"hyperv"/unit),"/etc/systemd/system/"+unit)
     guest.run("systemctl","daemon-reload")
+    unit="multica-vm-admin.service"
+    pid=subprocess.check_output(["systemctl","show",unit,"--property=MainPID","--value"],text=True).strip()
+    try:
+        reconnect = pid.isdigit() and int(pid) != 0 and not filecmp.cmp(f"/proc/{pid}/exe",BIN/"multica",shallow=False)
+    except FileNotFoundError:
+        # The old process exited during inspection. The service will start the installed binary.
+        reconnect = False
+    if reconnect:
+        sql="SELECT count(*) FROM agent_task_queue WHERE status NOT IN ('completed','failed','cancelled')"
+        pending=subprocess.check_output(["docker","compose","-p","multica-owner-only","-f",str(cfg),
+                                         "exec","-T","postgres","psql","-U","multica","-d","multica","-Atc",sql],text=True)
+        if pending.strip()!="0":
+            raise RuntimeError("Finish pending admin work before reconnecting the updated daemon.")
+        guest.run("systemctl","restart",unit)
     guest.run("systemctl","enable","--now","multica-vm-admin.service","multica-dashboard-home.service")
     for _ in range(60):
         runtimes=json.loads(as_agent("multica","--workspace-id",ws["id"],"runtime","list","--output","json",capture_output=True,text=True).stdout)

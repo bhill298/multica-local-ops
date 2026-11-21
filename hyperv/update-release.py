@@ -71,8 +71,12 @@ def stage(target):
             image = candidate(provider, target["commit"])
             subprocess.run(["docker", "build", "--build-arg", "MULTICA_REV=" + target["commit"],
                             "-t", image, "-f", "-", context], input=dockerfile, text=True, check=True)
-            subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "multica",
-                            image, "--help"], stdout=subprocess.DEVNULL, check=True)
+            info = json.loads(output("docker", "run", "--rm", "--network", "none", "--entrypoint", "multica",
+                                     image, "version", "--output", "json"))
+            short_commit = info.get("commit", "")
+            if (not re.fullmatch(r"\d+\.\d+\.\d+", info.get("version", "")) or
+                    not re.fullmatch(r"[a-f0-9]{7,40}", short_commit) or not target["commit"].startswith(short_commit)):
+                raise RuntimeError(f"{provider} CLI does not identify the staged Multica release.")
 
 
 def activate(target, backup):

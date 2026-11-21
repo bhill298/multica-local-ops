@@ -18,6 +18,12 @@ for setup. Run the exact command printed by the plan, for example:
 The script pulls the backend and web images by digest and builds the matching
 Multica binary into copies of your three installed worker images. This keeps
 their Codex, Claude and Agy versions intact. It leaves PostgreSQL pinned.
+The compiler stamps the CLI with the release tag matching its pinned source
+commit. Update staging checks the reported version and commit before activation.
+The web app uses the daemon's registered CLI version to enable **Create with
+agent**. On v0.11.1 the previous unstamped build reported `dev` and blocked
+that flow. After reconnecting all four daemons, both dashboards enabled it
+and a daily browser submission created a completed issue.
 Before changing the running application it takes a production checkpoint and
 exports that checkpoint to a private Windows directory. Both contain the VM's
 database, uploads, worker homes, logins and project files. The export can be
