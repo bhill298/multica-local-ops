@@ -15,8 +15,11 @@ projects = [("Daily", "multica-vm", ["docker", "exec", "multica-vm-codex-1", "mu
 result = {"workers": [], "containers": [], "errors": []}
 for workspace, project, cli in projects:
     if sys.argv[1:] == ["idle"]:
-        count = output("docker", "exec", project + "-postgres-1", "psql", "-U", "multica", "-d", "multica",
-                       "-Atc", "SELECT count(*) FROM agent_task_queue WHERE status NOT IN ('completed','failed','cancelled')")
+        try:
+            count = output("docker", "exec", project + "-postgres-1", "psql", "-U", "multica", "-d", "multica",
+                           "-Atc", "SELECT count(*) FROM agent_task_queue WHERE status NOT IN ('completed','failed','cancelled')")
+        except subprocess.SubprocessError as error:
+            sys.exit(f"{workspace} idle check failed: could not query {project}-postgres-1 ({error}).")
         if count != "0":
             sys.exit(f"{workspace} has {count} unfinished jobs.")
         continue

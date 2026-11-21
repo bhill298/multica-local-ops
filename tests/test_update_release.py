@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -77,15 +78,36 @@ class UpdateTests(unittest.TestCase):
         dockerfile = Path(__file__).resolve().parents[1] / "hyperv/provider.Dockerfile"
         (release.ROOT / "hyperv/provider.Dockerfile").write_text(dockerfile.read_text())
         for version, commit, ok in (("dev", "bbbbbbb", False), ("0.11.1", "", False),
-                                    ("0.11.1", "ccccccc", False), ("0.11.1", "bbbbbbb", True)):
+                                    ("0.11.1", "ccccccc", False), ("0.11.1", "bbbbbbb", True),
+                                    ("v0.11.1", "bbbbbbb", True)):
             with self.subTest(version=version, commit=commit), patch.object(release, "idle"), \
-                    patch.object(release.subprocess, "run"), patch.object(release, "output", side_effect=lambda *args:
+                    patch.object(release.subprocess, "run"), patch.object(release, "check_daemon_command") as parser, patch.object(release, "output", side_effect=lambda *args:
                         "image" if "inspect" in args else json.dumps({"version": version, "commit": commit})):
                 if ok:
                     release.stage(self.target)
+                    self.assertEqual([call.args[0] for call in parser.call_args_list], list(release.PROVIDERS))
                 else:
                     with self.assertRaisesRegex(RuntimeError, "does not identify"):
                         release.stage(self.target)
+
+    def test_daemon_probe_uses_deployed_flags_without_parsing_help_text(self):
+        flags = ["multica", "daemon", "start", "--foreground", "--no-auto-update", "--no-auto-reload"]
+        repo = Path(__file__).resolve().parents[1]
+        for path in ("hyperv/guest.py", "hyperv/multica-vm-admin.service"):
+            self.assertIn(" ".join(flags), (repo / path).read_text())
+        ok = subprocess.CompletedProcess([], 0, "arbitrary help wording", "")
+        bad = subprocess.CompletedProcess([], 1, "", "unknown flag: --no-auto-reload")
+        with patch.object(release.subprocess, "run", side_effect=[ok, bad]) as invoke:
+            release.check_daemon_command("claude", "test-image")
+            cmd = invoke.call_args_list[0].args[0]
+            self.assertEqual(cmd[-len(flags)-1:], flags + ["--help"])
+            self.assertIn("--network", cmd)
+        with patch.object(release.subprocess, "run", return_value=bad):
+            with self.assertRaisesRegex(RuntimeError, "Staging claude: .*unknown flag: --no-auto-reload"):
+                release.check_daemon_command("claude", "test-image")
+        with patch.object(release.subprocess, "run", return_value=ok), patch("sys.stderr") as err:
+            release.check_daemon_command("claude", "test-image")
+            self.assertIn("inconclusive", str(err.write.call_args_list))
 
 
 if __name__ == "__main__":

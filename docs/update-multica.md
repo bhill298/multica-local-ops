@@ -34,6 +34,15 @@ The web app uses the daemon's registered CLI version to enable **Create with
 agent**. On v0.11.1 the previous unstamped build reported `dev` and blocked
 that flow. After reconnecting all four daemons, both dashboards enabled it
 and a daily browser submission created a completed issue.
+Staging also invokes `multica daemon start --foreground --no-auto-update --no-auto-reload --help`
+in each candidate worker image. The temporary containers have no network
+or mounted worker homes. A rejection stops staging before migration and
+reports the provider, command, exit code and CLI diagnostic. Changes to
+help wording and additional flags are harmless. A second invocation uses a
+made-up flag. If help mode accepts it or the control cannot run, the updater
+warns that the check was inconclusive. Runtime registration is still checked
+after migration.
+
 Before changing the running application it takes a production checkpoint and
 exports that checkpoint to a private Windows directory. Both contain the VM's
 database, uploads, worker homes, logins and project files. The export can be
@@ -48,6 +57,22 @@ After the upgrade, run `./hyperv/Connect-Guest.ps1 -Action Admin` to update
 the admin plane and re-enable its automatic startup. Do the same after
 restoring an update checkpoint taken while the admin plane was paused.
 Try a small real task with the providers you rely on after an upgrade.
+
+**Windows dashboard check.** For a web update, the portal tests both configured
+Windows `/login` addresses before it pauses the admin workspace and again
+after it restarts that workspace. The checks make unauthenticated GET requests
+with no system HTTP proxy. They accept a 2xx response and follow up to five
+same-origin redirects. Page text, layout and model-provider availability
+do not affect the result.
+
+The portal retries startup failures for about 45 seconds after the update.
+If a previously reachable URL stays down, the result says the upgrade was
+applied and Windows dashboard verification failed. It gives the URL, last
+HTTP or connection error, and backup location. The upgrade and backup stay
+in place. A URL down both times is reported as a pre-existing outage. A
+recovered URL passes. These checks run only for an actual web update.
+The standalone terminal updater finishes with the admin workspace paused;
+check its Windows login link after you bring that workspace back.
 
 **Keep the backup ID printed by the script.** Under
 `%ProgramFiles%\MulticaVM\<VM name>\updates\<backup ID>` you'll find
@@ -77,7 +102,7 @@ can still require changes here.
 
 When the target commit or image digests differ, both Plan and Apply read
 source files from the exact target commit on GitHub. The portal runs Plan
-before it pauses the admin workspace. A failed source read or an unrecognized
+before it pauses the admin workspace. A failed required source read or an unrecognized
 required name stops the update before staging images or changing services.
 An already-current install skips this check. Restore and Clear work without it.
 
@@ -85,7 +110,14 @@ The check looks at current sqlc models and queries for the queue and user
 tables and columns, the handler's terminal status labels, the questionnaire
 fields and version, and the star-prompt limit. Older releases without either
 star-prompt column get a warning; our SQL already skips that optional feature.
-A partial rename fails the check. Old migrations can retain names that the
+A partial rename fails the check. Missing required database columns or
+changes to the terminal status set block an upgrade. An unrecognized queue
+classifier also needs review, since it controls the decision to stop active
+workers. JSON tag options, reordered cases and equivalent literal equality
+lists are tolerated. For the cosmetic prompt checks, an identified field
+rename or changed numeric threshold is reported by name. A moved optional
+handler or an indirect prompt constant produces a warning to check prompt
+behavior. Old migrations can retain names that the
 current application no longer uses, so searching the migration history for
 a matching word would give false reassurance.
 
@@ -96,7 +128,14 @@ their meaning changes. The check does not run candidate migrations. Keep
 the checkpoint/export and verify the upgraded instance as usual. To inspect
 a checkout offline, run `./hyperv/Test-UpstreamSql.ps1 -SourceRoot <checkout>`.
 
-On November 21 we checked the real v0.7.0 and v0.11.1 sources. The installed
+On November 21 the daemon argument probe passed against all three real
+v0.11.1 worker images. Both installed Windows login URLs responded. We
+tested a startup retry, a pre-existing outage and a new outage separately.
+An isolated Edge portal displayed the failing URL, HTTP 503 and backup
+location for a simulated applied upgrade. A terminal test preserved the
+guest's rejected-flag diagnostic. These tests did not migrate the live VM.
+
+We also checked the real v0.7.0 and v0.11.1 sources. The installed
 portal updater also planned a v0.11.1 update with a simulated older installed
 version and rejected a simulated candidate missing the queue status column.
 These were read-only checks; the running VM was already on v0.11.1.

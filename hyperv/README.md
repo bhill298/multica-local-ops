@@ -179,7 +179,10 @@ Check for updates compares the installed pins with upstream's stable release
 and registry images while Ubuntu is running. Install checks again, pauses the
 idle admin workspace, and uses the same checkpoint, export and migration as
 `update-vm.ps1`. It restores the admin workspace after a successful upgrade.
-An interrupted migration requires inspection of the update receipt before
+Staging tests the daemon flags against each candidate CLI. After a web
+upgrade the portal checks both Windows login links against their pre-update
+results. A new outage is reported with its URL and last error. The upgrade
+backup remains available. An interrupted migration requires inspection of the update receipt before
 restarting the admin plane. Allow a maintenance window for an actual upgrade.
 [Update backups and recovery](../docs/update-multica.md)
 

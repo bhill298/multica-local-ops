@@ -26,15 +26,30 @@ $sshOptions=@('-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','ConnectTimeou
 
 function Invoke-GuestUpdate([string[]]$Words) {
     # The remote shell receives only fixed action names and validated release references.
-    Get-Content -Raw "$PSScriptRoot/hyperv/update-release.py" | ssh @sshOptions "sudo python3 - $($Words -join ' ')"
-    if ($LASTEXITCODE) { throw "Guest operation $($Words[0]) failed." }
+    $PSNativeCommandUseErrorActionPreference=$false
+    $tail=[Collections.Generic.Queue[string]]::new()
+    Get-Content -Raw "$PSScriptRoot/hyperv/update-release.py" | ssh @sshOptions "sudo python3 - $($Words -join ' ')" 2>&1 | ForEach-Object {
+        $line=$_.ToString().Trim()
+        if ($line) {
+            if ($tail.Count -eq 4) {$null=$tail.Dequeue()}
+            $tail.Enqueue($line.Substring(0,[Math]::Min(1600,$line.Length)))
+        }
+        if ($Words[0] -eq 'status') {
+            if ($_ -isnot [Management.Automation.ErrorRecord]) { $_ }
+        } elseif ($line.StartsWith('Warning: ')) {
+            Write-Warning $line.Substring(9)
+        } else { Write-Host $line }
+    }
+    if ($LASTEXITCODE) { throw "Guest $($Words[0]) failed (exit $LASTEXITCODE): $($tail -join [Environment]::NewLine)" }
 }
 
 function Get-ImagePin([string]$Image,[string]$Tag) {
     $repo="multica-ai/$Image"
-    $token=(Invoke-RestMethod "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo}:pull").token
+    try { $token=(Invoke-RestMethod "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo}:pull").token }
+    catch {throw "Registry authorization failed for $repo $Tag : $($_.Exception.Message)"}
     $headers=@{Authorization="Bearer $token";Accept='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'}
-    $response=Invoke-WebRequest "https://ghcr.io/v2/$repo/manifests/$Tag" -Method Head -Headers $headers
+    try { $response=Invoke-WebRequest "https://ghcr.io/v2/$repo/manifests/$Tag" -Method Head -Headers $headers }
+    catch {throw "Cannot resolve container manifest for $repo $Tag : $($_.Exception.Message)"}
     $digest=[string]($response.Headers['Docker-Content-Digest'] | Select-Object -First 1)
     if ($digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw "Missing digest for $Image $Tag." }
     "ghcr.io/$repo@$digest"

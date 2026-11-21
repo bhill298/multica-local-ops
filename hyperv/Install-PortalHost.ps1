@@ -17,7 +17,7 @@ if (Test-Path "$dir/install.json") {
 . "$PSScriptRoot/Portal-Hosts.ps1"
 Set-PortalHosts -Id $vm.Id -Prefix $Prefix
 @{name=$Name;id=$state.id;prefix=$Prefix;webPort=$WebPort;directory=$directory} | ConvertTo-Json | Set-Content "$dir/install.json"
-Copy-Item "$PSScriptRoot/Portal-Action.ps1","$PSScriptRoot/portal-status.py","$PSScriptRoot/Portal-Hosts.ps1","$PSScriptRoot/../update-vm.ps1" $dir -Force
+Copy-Item "$PSScriptRoot/Portal-Action.ps1","$PSScriptRoot/Dashboard-Health.ps1","$PSScriptRoot/portal-status.py","$PSScriptRoot/Portal-Hosts.ps1","$PSScriptRoot/../update-vm.ps1" $dir -Force
 Copy-Item "$PSScriptRoot/update-release.py","$PSScriptRoot/Test-UpstreamSql.ps1" "$dir/hyperv/" -Force
 Copy-Item "$PSScriptRoot/Sync-GuestAddress.ps1" $root -Force
 & "$root/Sync-GuestAddress.ps1" -VMId $vm.Id

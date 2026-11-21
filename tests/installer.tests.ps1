@@ -16,6 +16,8 @@ try {
     $checks++
     & "$PSScriptRoot/upstream-sql.tests.ps1" -Fixture (Join-Path $temporary 'upstream-sql')
     $checks++
+    & "$PSScriptRoot/dashboard-health.tests.ps1"
+    $checks++
     . "$repo/hyperv/Portal-Hosts.ps1"
     $hostsFixture=Join-Path $temporary hosts
     $originalHosts="# existing comment`r`n127.0.0.1 existing.test`r`n"

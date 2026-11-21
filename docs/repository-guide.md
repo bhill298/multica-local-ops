@@ -58,7 +58,7 @@ installer nor the release updater applies a Multica source patch.
 | --- | --- |
 | Multica CLI, API or development login | Enrollment, agent creation and status consume specific commands, routes, JSON fields and provider names. Verify both logins, the existing team and a job in each workspace. |
 | Multica database schema | The idle checks read `agent_task_queue` and its terminal status values. The [owner settings SQL](../hyperv/owner-prompt-defaults.sql) writes onboarding and prompt preferences. The updater [checks these assumptions against the candidate source](update-multica.md#sql-compatibility-before-an-update) before staging. |
-| Release packaging | The updater expects published image tags and digests, the CLI build path and a compatible Go toolchain. It stages the CLI and checks its reported version and commit before activation. |
+| Release packaging | The updater expects published image tags and digests, the CLI build path and a compatible Go toolchain. It stages each CLI, checks the reported version and commit, and exercises the daemon startup arguments before migration. A web update also compares the two Windows login URLs before and after the change. |
 | Provider CLIs | Shared sign-in reads specific OAuth cache paths and fields. Admin provider selection also depends on the binaries' locations. Recheck sign-in, copying credentials and an actual model call when updating a provider. |
 | Windows or Ubuntu | Boot, checkpoint, SSH, SMB and network rules depend mainly on the host and guest OS. A new Ubuntu series needs a matching package profile. |
 

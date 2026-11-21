@@ -15,8 +15,9 @@ $updater="$PSScriptRoot/update-vm.ps1"
 function Get-Plan { & $updater -Name $Name -Directory $config.directory -Plan -PassThru }
 function Get-GuestReport([switch]$Idle) {
     if ($Idle) {
-        try { Get-Content -Raw "$PSScriptRoot/portal-status.py" | ssh @ssh 'sudo python3 - idle' }
-        catch { throw 'Both workspaces must be reachable and have no unfinished jobs. Check the queues before retrying.' }
+        $PSNativeCommandUseErrorActionPreference=$false
+        $details=Get-Content -Raw "$PSScriptRoot/portal-status.py" | ssh @ssh 'sudo python3 - idle' 2>&1
+        if ($LASTEXITCODE){throw "Cannot proceed: $(($details | Select-Object -Last 3) -join ' ')"}
     } else {
         # During boot SSH can report connection refused before the JSON status.
         Get-Content -Raw "$PSScriptRoot/portal-status.py" | ssh @ssh 'sudo python3 -' 2>$null
@@ -62,14 +63,25 @@ try {
         $plan=Get-Plan
         if (!$plan.available) { $message="Already up to date ($($plan.tag))."; break }
         Get-GuestReport -Idle
+        . "$PSScriptRoot/Dashboard-Health.ps1"
+        $before=Get-DashboardHealth $config -RetrySeconds 5
+        $applyError=$null
         try {
             ssh @ssh 'sudo bash /opt/multica-local/hyperv/admin.sh stop'
-            & $updater -Apply -Version $plan.tag -Name $Name -Directory $config.directory
-        }
-        finally {
-            ssh @ssh 'sudo sh -ec "if test -e /var/lib/multica-local/update-pending.json; then echo Interrupted-migration-review-the-update-backup >&2; exit 1; fi; exec python3 /opt/multica-local/hyperv/admin.py"'
-        }
-        $message="Installed $($plan.tag). Backup receipts are under $root/updates."
+            & $updater -Apply -Version $plan.tag -Name $Name -Directory $config.directory -WarningVariable applyWarnings
+        } catch { $applyError=$_.Exception.Message }
+        try {
+            $PSNativeCommandUseErrorActionPreference=$false
+            $adminOutput=ssh @ssh 'sudo sh -ec "if test -e /var/lib/multica-local/update-pending.json; then echo Interrupted-migration-review-the-update-backup >&2; exit 1; fi; exec python3 /opt/multica-local/hyperv/admin.py"' 2>&1
+            if ($LASTEXITCODE){throw (($adminOutput | Select-Object -Last 3) -join ' ')}
+        } catch {
+            if ($applyError){throw "$applyError. Admin recovery also failed: $($_.Exception.Message). See $root/updates."}
+            throw "Upgrade applied ($($plan.tag)); admin restart failed: $($_.Exception.Message). Backup receipts: $root/updates."
+        } finally { $PSNativeCommandUseErrorActionPreference=$true }
+        if ($applyError){throw $applyError}
+        $after=Get-DashboardHealth $config -RetrySeconds 45
+        $message=Compare-DashboardHealth $before $after $plan.tag "$root/updates"
+        if ($applyWarnings){$message+=" Warnings: $(($applyWarnings | Select-Object -Unique) -join '; ')"}
       }
       default {
         $updateLock=[IO.File]::Open("$root/update.lock",'OpenOrCreate','ReadWrite','None')

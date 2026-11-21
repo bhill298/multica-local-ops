@@ -39,7 +39,7 @@ foreach ($case in @(
     @("$handlers/agent_access.go",'"failed"','"failed", "retired"','unreviewed terminal status retired'),
     @("$handlers/onboarding.go",'role_skipped','skip_role','questionnaire.role_skipped'),
     @("$handlers/onboarding.go",'Version = 2','Version = 3','questionnaire schema version 2'),
-    @("$handlers/star_prompt.go",' = 2',' = 2 + 1','star prompt limit 2')
+    @("$handlers/star_prompt.go",' = 2',' = 3','star prompt limit 2')
 )) {
     $file,$old,$new,$expected=$case
     $original=[IO.File]::ReadAllText($file)
@@ -49,3 +49,15 @@ foreach ($case in @(
     finally { [IO.File]::WriteAllText($file,$original) }
     if (!$message.Contains($expected)) { throw "Expected $expected in compatibility failure. Got: $message" }
 }
+# Formatting changes that leave the contract intact must pass. An indirect
+# cosmetic constant is inconclusive and should warn instead of blocking.
+($models -replace 'json:"status"','db:"status" json:"status,omitempty"') | Set-Content "$generated/models.go"
+'SELECT status FROM "public" . "agent_task_queue";' | Set-Content "$queries/agent.sql"
+@'
+func isTerminalTaskStatus(s string) bool {
+    return s == "cancelled" || s == "completed" || s == "failed"
+}
+'@ | Set-Content "$handlers/agent_access.go"
+'    starPromptMaxShowings = defaultShowings' | Set-Content "$handlers/star_prompt.go"
+& $check -SourceRoot $Fixture -WarningVariable advisory -WarningAction SilentlyContinue
+if ("$advisory" -notmatch 'starPromptMaxShowings'){throw 'Unrecognized prompt implementation should produce a named advisory.'}

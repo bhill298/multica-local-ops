@@ -45,13 +45,33 @@ def idle():
     if subprocess.run(["systemctl", "is-active", "--quiet", "multica-vm-admin.service"]).returncode == 0:
         raise RuntimeError("The guest administrator is running.")
     sql = "select count(*) from agent_task_queue where status not in ('completed','failed','cancelled')"
-    if output(*COMPOSE, "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",
-              "-U", "multica", "-d", "multica", "-Atc", sql) != "0":
-        raise RuntimeError("Finish or cancel outstanding Multica work first.")
+    count = output(*COMPOSE, "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",
+                   "-U", "multica", "-d", "multica", "-Atc", sql)
+    if count != "0":
+        raise RuntimeError(f"Daily workspace has {count} unfinished jobs. Finish or cancel them before updating.")
 
 
 def candidate(provider, commit):
     return f"multica-local/{provider}:update-{commit}"
+
+
+def check_daemon_command(provider, image):
+    command = ["multica", "daemon", "start", "--foreground", "--no-auto-update", "--no-auto-reload", "--help"]
+    runner = ["docker", "run", "--rm", "--network", "none", "--entrypoint", "/usr/bin/timeout",
+              image, "-k", "2", "15"]
+    result = subprocess.run(runner + command, capture_output=True, text=True)
+    if result.returncode:
+        detail = (result.stderr or result.stdout).strip()[:1500]
+        if result.returncode in (124, 137):
+            detail = "help did not exit within 15 seconds"
+        raise RuntimeError(f"Staging {provider}: {' '.join(command)} exited {result.returncode}: {detail}")
+    # A parser that short-circuits on --help would also accept a made-up flag.
+    control = subprocess.run(runner + command[:-1] + ["--multica-unsupported-probe", "--help"],
+                             capture_output=True, text=True)
+    if control.returncode == 0 or control.returncode in (124, 125, 126, 127, 137):
+        detail = ("accepted an unknown flag" if control.returncode == 0
+                  else f"probe container exited {control.returncode}")
+        print(f"Warning: {provider} daemon argument check inconclusive: negative control {detail}.", file=sys.stderr)
 
 
 def stage(target):
@@ -71,12 +91,19 @@ def stage(target):
             image = candidate(provider, target["commit"])
             subprocess.run(["docker", "build", "--build-arg", "MULTICA_REV=" + target["commit"],
                             "-t", image, "-f", "-", context], input=dockerfile, text=True, check=True)
-            info = json.loads(output("docker", "run", "--rm", "--network", "none", "--entrypoint", "multica",
-                                     image, "version", "--output", "json"))
+            try:
+                info = json.loads(output("docker", "run", "--rm", "--network", "none", "--entrypoint", "multica",
+                                         image, "version", "--output", "json"))
+                if not isinstance(info, dict):
+                    raise ValueError("expected a JSON object")
+            except (ValueError, subprocess.CalledProcessError) as error:
+                raise RuntimeError(f"Staging {provider}: multica version --output json failed: {error}") from error
             short_commit = info.get("commit", "")
-            if (not re.fullmatch(r"\d+\.\d+\.\d+", info.get("version", "")) or
+            if (not re.fullmatch(r"v?\d+\.\d+\.\d+", info.get("version", "")) or
                     not re.fullmatch(r"[a-f0-9]{7,40}", short_commit) or not target["commit"].startswith(short_commit)):
-                raise RuntimeError(f"{provider} CLI does not identify the staged Multica release.")
+                raise RuntimeError(f"{provider} CLI does not identify the staged Multica release: "
+                                   f"expected commit {target['commit']}, got {short_commit!r}, version {info.get('version')!r}.")
+            check_daemon_command(provider, image)
 
 
 def activate(target, backup):
@@ -109,25 +136,32 @@ def activate(target, backup):
     subprocess.run([*COMPOSE, "up", "-d"], check=True)
     workspace = (STATE / "workspace").read_text().strip()
     expected = set(json.loads((STATE / "team.json").read_text()).values())
+    failure = "waiting for the daily dashboard"
     for _ in range(90):
+        probe = "daily dashboard"
         try:
             with urllib.request.urlopen("http://127.0.0.1:43130", timeout=4) as resp:
                 if resp.status != 200:
-                    raise ValueError("Dashboard unavailable")
+                    raise ValueError(f"Daily dashboard returned HTTP {resp.status}")
             cli = [*COMPOSE, "exec", "-T", "codex", "multica", "--workspace-id", workspace]
+            probe = "daily agent list"
             agents = json.loads(output(*cli, "agent", "list", "--output", "json"))
+            missing_agents = expected - {a["id"] for a in agents}
+            probe = "daily runtime list"
             runtimes = json.loads(output(*cli, "runtime", "list", "--output", "json"))
-            if expected <= {a["id"] for a in agents} and {"codex", "claude", "antigravity"} <= {
-                    r["provider"] for r in runtimes if r["status"] == "online"}:
-                for provider in PROVIDERS:
-                    output(*COMPOSE, "exec", "-T", provider, "multica", "--workspace-id", workspace,
-                           "agent", "list", "--output", "json")
-                pending.unlink()
-                return
-        except (OSError, ValueError, subprocess.CalledProcessError):
-            pass
+            offline = {"codex", "claude", "antigravity"} - {r["provider"] for r in runtimes if r["status"] == "online"}
+            if missing_agents or offline:
+                raise ValueError(f"Missing saved agent IDs: {sorted(missing_agents)}; missing online providers: {sorted(offline)}")
+            for provider in PROVIDERS:
+                probe = f"{provider} workspace CLI access"
+                output(*COMPOSE, "exec", "-T", provider, "multica", "--workspace-id", workspace,
+                       "agent", "list", "--output", "json")
+            pending.unlink()
+            return
+        except (OSError, ValueError, TypeError, KeyError, subprocess.CalledProcessError) as error:
+            failure = f"{probe}: {error}"
         time.sleep(2)
-    raise RuntimeError("Dashboard, existing team or online runtime verification failed.")
+    raise RuntimeError(f"Daily verification after activation failed: {failure}. Retained backup: {backup}.")
 
 
 def main(args):
@@ -154,4 +188,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as error:
+        sys.exit(f"Multica update: {error}")
