@@ -22,7 +22,7 @@ function Get-LoginFailure([Net.Http.HttpClient]$Client,[uri]$Url) {
 function Get-DashboardHealth($Config,[int]$RetrySeconds) {
     $suffix=if ($Config.webPort -ne 80){":$($Config.webPort)"}
     $results=@(foreach ($role in 'user','admin') {
-        [pscustomobject]@{Url="http://$($Config.prefix)-$role.localhost$suffix/login";Healthy=$false;Failure=''}
+        [pscustomobject]@{Url="http://$($Config.prefix)-$role.lan$suffix/login";Healthy=$false;Failure=''}
     })
     $handler=[Net.Http.HttpClientHandler]::new()
     $handler.AllowAutoRedirect=$false

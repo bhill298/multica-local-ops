@@ -34,6 +34,11 @@ try {
     Assert ($why -match 'already exists') 'Other installations could take the same hostname'
     Set-PortalHosts -Id $hostId -Prefix multica -Remove -Path $hostsFixture
     Assert ($originalHosts -ceq [IO.File]::ReadAllText($hostsFixture)) 'Uninstall changed unrelated hosts entries'
+    $prior="# BEGIN Multica $hostId`r`n127.0.0.1 multica.localhost multica-user.localhost multica-admin.localhost`r`n# END Multica $hostId`r`n"
+    [IO.File]::WriteAllText($hostsFixture,$originalHosts+$prior+"# after`r`n")
+    Set-PortalHosts -Id $hostId -Prefix multica -Path $hostsFixture
+    Assert ([IO.File]::ReadAllText($hostsFixture) -ceq ($first+"# after`r`n")) 'Old hosts block did not migrate in place'
+    Assert ($first.Contains('127.0.0.1 multica.lan multica-user.lan multica-admin.lan')) 'Missing local .lan names'
     $checks++
     $portsDir=Join-Path $temporary ports
     $null=New-Item -ItemType Directory -Path $portsDir

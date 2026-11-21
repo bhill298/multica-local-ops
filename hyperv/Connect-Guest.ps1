@@ -29,9 +29,9 @@ if (Test-Path $portalConfig) {
     $pc=Get-Content $portalConfig -Raw | ConvertFrom-Json
     if ($pc.name -ne $Name) {throw 'Wrong operator profile for this VM.'}
     $suffix=if ($pc.port -ne 80){":$($pc.port)"}
-    $homeUrl="http://$($pc.prefix).localhost$suffix"
-    $dailyUrl="http://$($pc.prefix)-user.localhost$suffix"
-    $adminUrl="http://$($pc.prefix)-admin.localhost$suffix"
+    $homeUrl="http://$($pc.prefix).lan$suffix"
+    $dailyUrl="http://$($pc.prefix)-user.lan$suffix"
+    $adminUrl="http://$($pc.prefix)-admin.lan$suffix"
 }
 if ($Action -eq 'Manage') {
     if (!$pc) {throw 'Install the Windows management portal first.'}

@@ -20,7 +20,7 @@ release. See [update, restore and backup cleanup](docs/update-multica.md).
 
 For isolated Linux workers, run `./install.ps1 -HyperV` from PowerShell 7.3+
 and follow the [VM operating guide](hyperv/README.md). Open
-[Multica dashboards](http://multica.localhost) from Windows and choose
+[Multica dashboards](http://multica.lan) from Windows and choose
 **Manage installation** for power, boot startup and updates. The default
 opens directly in any local browser. For a shared PC, add
 `-RequireManagementKey` to the install command to require browser pairing.

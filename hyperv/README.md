@@ -116,7 +116,7 @@ on the same hostname.
 
 ## Daily use
 
-Open **http://multica.localhost** from Windows. The old bookmark at
+Open **http://multica.lan** from Windows. The old bookmark at
 http://localhost:43130 also works. At Windows sign-in a limited-user task
 starts the portal and a second task opens the two SSH forwards to Ubuntu.
 The VM has its own SYSTEM task for boot, before Windows sign-in. Ubuntu
@@ -152,13 +152,19 @@ In your router's local DNS, point these three names to the same address.
 For a single client, this line in that client's hosts file also works:
 
 ```text
-192.168.1.50  multica.home.arpa  user.multica.home.arpa  admin.multica.home.arpa
+192.168.1.50  multica.lan  multica-user.lan  multica-admin.lan
 ```
 
-Open `http://multica.home.arpa/` and choose a dashboard, or use
-`http://multica.home.arpa/manage`. The two dashboard names let you stay
+Open `http://multica.lan/` and choose a dashboard, or use
+`http://multica.lan/manage`. The two dashboard names let you stay
 signed in to both in the same browser. The installer prints the names and
-port for your installation. The usual `.localhost` URLs still work on the PC.
+port for your installation. Windows maps the three `.lan` names to loopback
+in its hosts file. LAN clients using Pi-hole need the same three names
+mapped to the PC's LAN address. Windows-only `.localhost` bookmarks and
+previously configured LAN `.home.arpa` bookmarks still work.
+On an older installation, run `./hyperv/Install-Portal.ps1` to update the
+Windows hosts entries and portal together. A new hostname has its own
+browser cookies, so sign in once on each new dashboard.
 
 The Windows firewall rule allows the portal executable on the selected
 address, interface and TCP port for the Private profile. The portal also
@@ -172,6 +178,10 @@ needs its own pairing at `/manage#<operator-key>` on the LAN origin.
 
 LAN mode uses plain HTTP. Someone able to intercept that connection can
 read or modify requests, including sign-in codes and session cookies.
+These private `.lan` names cannot receive a publicly trusted certificate.
+A DNS-validated certificate for a domain you control covers the names on
+that certificate. Pi-hole can resolve those names to a private IP without
+router port forwarding.
 Router port forwarding is unnecessary. Normal sign-in and management
 status worked on HTTP in a browser test. Browser features that require a
 secure context can behave differently from localhost.
@@ -192,7 +202,7 @@ Choose **Manage installation** on the landing page. The same Windows portal
 serves both `/` and `/manage`, including while Ubuntu is shut down.
 
 On a fresh install the management key is empty. Bookmark
-http://multica.localhost/manage or click through from the landing page.
+http://multica.lan/manage or click through from the landing page.
 Setup skips the Start shortcut. This default assumes you trust the Windows
 users and programs on the PC. Any local process that can reach the portal
 can request management operations. Windows still handles elevation, and
@@ -336,8 +346,8 @@ Run these commands from the repository root:
 
 | Dashboard | Windows URL | Default email | Default PIN | When to use it |
 | --- | --- | --- | --- | --- |
-| Daily | http://multica-user.localhost | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
-| VM admin | http://multica-admin.localhost | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. The admin worker can use sudo. |
+| Daily | http://multica-user.lan | `user@localhost` | `111111` | Assign work to agents in the three worker containers. |
+| VM admin | http://multica-admin.lan | `admin@localhost` | `111111` | Run maintenance directly on Ubuntu. The admin worker can use sudo. |
 
 The previous direct addresses `http://localhost:43133` and
 `http://127.0.0.1:43230` still work. Sign in once at the new hostnames

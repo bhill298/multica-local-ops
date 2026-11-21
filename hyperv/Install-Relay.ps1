@@ -40,7 +40,7 @@ $routes=@{user="http://localhost:$($ports.daily)/login";admin="http://127.0.0.1:
 if ($Portal) {
     $pc=Get-Content $portalConfig -Raw | ConvertFrom-Json
     $suffix=if ($pc.port -ne 80) { ":$($pc.port)" }
-    foreach ($kind in 'user','admin') { $routes[$kind]="http://$($pc.prefix)-$kind.localhost$suffix/login" }
+    foreach ($kind in 'user','admin') { $routes[$kind]="http://$($pc.prefix)-$kind.lan$suffix/login" }
     Start-ScheduledTask -TaskName "$Name management portal"
 }
 $checkApps=$Portal -and (Get-Content "$env:ProgramFiles/MulticaVM/$Name/host-status.json" -Raw | ConvertFrom-Json).vm -eq 'Running'

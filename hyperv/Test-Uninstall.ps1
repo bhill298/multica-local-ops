@@ -35,7 +35,7 @@ foreach ($keep in $false,$true) {
         $setup="$source/hyperv/Install-Portal.ps1"
         & $setup @install
         if ((Invoke-WebRequest "http://localhost:$($ports.home)" -NoProxy).StatusCode -ne 200){throw 'Offline test portal unavailable.'}
-        $api="http://$($name.ToLowerInvariant()).localhost:$($ports.home)/api/job"
+        $api="http://$($name.ToLowerInvariant()).lan:$($ports.home)/api/job"
         $shortcut=Join-Path ([Environment]::GetFolderPath('Programs')) "$name Management.lnk"
         $keyPath="$profileDir/portal/operator.key"
         $pair="$profileDir/portal/open-management.html"

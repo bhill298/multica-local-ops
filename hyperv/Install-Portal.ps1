@@ -100,14 +100,14 @@ $principal=New-ScheduledTaskPrincipal -UserId $who.Name -LogonType Interactive -
 $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 99 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName $task -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 & "$PSScriptRoot/Install-Relay.ps1" -Name $Name -Directory $Directory -SkipProjectDrive:$SkipProjectDrive -Portal
-$authority=$prefix+'.localhost'+$(if ($WebPort -ne 80){":$WebPort"})
+$authority=$prefix+'.lan'+$(if ($WebPort -ne 80){":$WebPort"})
 if ($lan) {
     $suffix=if ($WebPort -ne 80){":$WebPort"}else{''}
-    $expected="http://admin.$prefix.home.arpa$suffix/login"
+    $expected="http://$prefix-admin.lan$suffix/login"
     # Check the LAN socket directly. Client-side DNS may not be configured yet.
     $http=[Net.Http.HttpClient]::new([Net.Http.HttpClientHandler]@{UseProxy=$false;AllowAutoRedirect=$false})
     $http.Timeout=[TimeSpan]::FromSeconds(2)
-    $http.DefaultRequestHeaders.Host="$prefix.home.arpa$suffix"
+    $http.DefaultRequestHeaders.Host="$prefix.lan$suffix"
     try {
         $deadline=[datetime]::UtcNow.AddSeconds(15)
         do {
@@ -120,8 +120,8 @@ if ($lan) {
         } until ($ready -or [datetime]::UtcNow -ge $deadline)
         if (!$ready){throw "Local portal is installed, but the LAN listener on ${LanAddress}:$WebPort did not return the expected redirect. Verify the address and port, then rerun."}
     } finally {$http.Dispose()}
-    "In LAN DNS point $prefix.home.arpa, user.$prefix.home.arpa and admin.$prefix.home.arpa to $LanAddress."
-    "Open http://$prefix.home.arpa$suffix/ on a LAN client."
+    "In LAN DNS point $prefix.lan, $prefix-user.lan and $prefix-admin.lan to $LanAddress."
+    "Open http://$prefix.lan$suffix/ on a LAN client."
 }
 if (!$RequireManagementKey) { "Open http://$authority/manage on Windows."; return }
 [IO.File]::WriteAllText($pair,('<meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>location.replace({0})</script>' -f (ConvertTo-Json "http://$authority/manage#$secret" -Compress)))

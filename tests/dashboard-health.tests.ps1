@@ -1,8 +1,8 @@
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/../hyperv/Dashboard-Health.ps1"
 $config=@{prefix='multica-test';webPort=8042}
-$userUrl='http://multica-test-user.localhost:8042/login'
-$adminUrl='http://multica-test-admin.localhost:8042/login'
+$userUrl='http://multica-test-user.lan:8042/login'
+$adminUrl='http://multica-test-admin.lan:8042/login'
 $failures=@{$userUrl=@($null);$adminUrl=@('HTTP 503 at /login')}
 function Get-LoginFailure($Client,$Url) {
     $series=$failures[$Url]

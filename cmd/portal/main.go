@@ -49,9 +49,6 @@ type portal struct {
 	last job
 }
 
-func (p *portal) host(suffix string) string {
-	return p.authority(p.cfg.Prefix + suffix + ".localhost")
-}
 func (p *portal) authority(h string) string {
 	if p.cfg.Port != 80 {
 		h += fmt.Sprintf(":%d", p.cfg.Port)
@@ -106,7 +103,27 @@ func proxy(target, public string) http.Handler {
 	return rp
 }
 func (p *portal) handler() http.Handler {
-	return p.routes(p.host(""), p.host("-user"), p.host("-admin"), true)
+	return p.namedRoutes(true)
+}
+
+func (p *portal) namedRoutes(local bool) http.Handler {
+	prefix := p.cfg.Prefix
+	current := p.routes(p.authority(prefix+".lan"), p.authority(prefix+"-user.lan"), p.authority(prefix+"-admin.lan"), local)
+	home, daily, admin := prefix+".localhost", prefix+"-user.localhost", prefix+"-admin.localhost"
+	if !local {
+		home = prefix + ".home.arpa"
+		daily, admin = "user."+home, "admin."+home
+	}
+	home, daily, admin = p.authority(home), p.authority(daily), p.authority(admin)
+	previous := p.routes(home, daily, admin, false)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch strings.ToLower(r.Host) {
+		case home, daily, admin:
+			previous.ServeHTTP(w, r)
+		default:
+			current.ServeHTTP(w, r)
+		}
+	})
 }
 
 func (p *portal) routes(home, daily, admin string, local bool) http.Handler {
@@ -222,8 +239,7 @@ func (p *portal) routes(home, daily, admin string, local bool) http.Handler {
 }
 
 func (p *portal) lanHandler(binding netip.Prefix) http.Handler {
-	domain := p.cfg.Prefix + ".home.arpa"
-	routes := p.routes(p.authority(domain), p.authority("user."+domain), p.authority("admin."+domain), false)
+	routes := p.namedRoutes(false)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		peer, err := netip.ParseAddrPort(r.RemoteAddr)
 		if err != nil || !binding.Contains(peer.Addr()) {

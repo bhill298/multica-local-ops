@@ -18,13 +18,14 @@ func TestLANRoutes(t *testing.T) {
 		path, host, peer, location string
 		want                       int
 	}{
-		{"/", "multica.home.arpa:8080", "192.168.4.91:45200", "", 200},
-		{"/user", "multica.home.arpa:8080", "192.168.4.91:45200", "http://user.multica.home.arpa:8080/login", 302},
-		{"/admin", "multica.home.arpa:8080", "192.168.4.91:45200", "http://admin.multica.home.arpa:8080/login", 302},
-		{"/api/job", "multica.home.arpa:8080", "192.168.4.91:45200", "", 200},
+		{"/", "multica.lan:8080", "192.168.4.91:45200", "", 200},
+		{"/user", "multica.lan:8080", "192.168.4.91:45200", "http://multica-user.lan:8080/login", 302},
+		{"/admin", "multica.lan:8080", "192.168.4.91:45200", "http://multica-admin.lan:8080/login", 302},
+		{"/api/job", "multica.lan:8080", "192.168.4.91:45200", "", 200},
 		{"/manage", "multica.localhost:8080", "192.168.4.91:45200", "", 421},
+		{"/admin", "multica.home.arpa:8080", "192.168.4.91:45200", "http://admin.multica.home.arpa:8080/login", 302},
 		{"/admin", "localhost:43130", "192.168.4.91:45200", "", 421},
-		{"/api/job", "multica.home.arpa:8080", "192.168.5.91:45200", "", 403},
+		{"/api/job", "multica.lan:8080", "192.168.5.91:45200", "", 403},
 	} {
 		r := httptest.NewRequest("GET", "http://"+tc.host+tc.path, nil)
 		r.RemoteAddr = tc.peer
@@ -35,15 +36,15 @@ func TestLANRoutes(t *testing.T) {
 			t.Errorf("%s %s%s: got %d %q", tc.peer, tc.host, tc.path, w.Code, w.Header().Get("Location"))
 		}
 	}
-	for _, origin := range []string{"http://multica.localhost:8080", "http://multica.home.arpa:8080"} {
-		r := httptest.NewRequest("POST", "http://multica.home.arpa:8080/api/action", strings.NewReader(`{"action":"unknown"}`))
+	for _, origin := range []string{"http://multica.localhost:8080", "http://multica.lan:8080"} {
+		r := httptest.NewRequest("POST", "http://multica.lan:8080/api/action", strings.NewReader(`{"action":"unknown"}`))
 		r.RemoteAddr = "192.168.4.91:1000"
 		r.Header.Set("Origin", origin)
 		r.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		want := 403
-		if origin == "http://multica.home.arpa:8080" {
+		if origin == "http://multica.lan:8080" {
 			want = 400 // Accepted origin, rejected action.
 		}
 		if w.Code != want {
@@ -59,14 +60,15 @@ func TestManagementBoundary(t *testing.T) {
 		host, method, path, auth, origin, body string
 		want                                   int
 	}{
+		{"multica.lan", "GET", "/", "", "", "", 200},
 		{"multica.localhost", "GET", "/", "", "", "", 200},
 		{"localhost:43130", "GET", "/manage", "", "", "", 302},
 		{"unrelated.test", "GET", "/", "", "", "", 421},
-		{"multica.localhost", "GET", "/api/job", "", "", "", 403},
+		{"multica.lan", "GET", "/api/job", "", "", "", 403},
 		{"localhost:43130", "GET", "/api/job", p.key, "", "", 403},
-		{"multica.localhost", "GET", "/api/job", p.key, "", "", 200},
-		{"multica.localhost", "POST", "/api/action", p.key, "http://unrelated.test", `{"action":"stop"}`, 403},
-		{"multica.localhost", "POST", "/api/action", p.key, "http://multica.localhost", `{"action":"arbitrary"}`, 400},
+		{"multica.lan", "GET", "/api/job", p.key, "", "", 200},
+		{"multica.lan", "POST", "/api/action", p.key, "http://unrelated.test", `{"action":"stop"}`, 403},
+		{"multica.lan", "POST", "/api/action", p.key, "http://multica.lan", `{"action":"arbitrary"}`, 400},
 	} {
 		r := httptest.NewRequest(tc.method, "http://"+tc.host+tc.path, strings.NewReader(tc.body))
 		r.Header.Set("Authorization", "Bearer "+tc.auth)
@@ -81,7 +83,7 @@ func TestManagementBoundary(t *testing.T) {
 	for role, port := range map[string]int{"user": 43133, "admin": 43230} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", "http://localhost:43130/"+role, nil))
-		if w.Header().Get("Location") != "http://multica-"+role+".localhost/login" {
+		if w.Header().Get("Location") != "http://multica-"+role+".lan/login" {
 			t.Fatalf("wrong %s redirect (tunnel port %d)", role, port)
 		}
 	}
@@ -93,12 +95,12 @@ func TestLocalManagementAccess(t *testing.T) {
 		method, host, path, origin, content string
 		want                                int
 	}{
-		{"GET", "multica.localhost", "/api/job", "", "", 200},
+		{"GET", "multica.lan", "/api/job", "", "", 200},
 		{"GET", "localhost:43130", "/api/job", "", "", 403},
 		{"GET", "unrelated.test", "/api/job", "", "", 421},
-		{"POST", "multica.localhost", "/api/action", "http://unrelated.test", "application/json", 403},
-		{"POST", "multica.localhost", "/api/action", "", "application/json", 403},
-		{"POST", "multica.localhost", "/api/action", "http://multica.localhost", "text/plain", 403},
+		{"POST", "multica.lan", "/api/action", "http://unrelated.test", "application/json", 403},
+		{"POST", "multica.lan", "/api/action", "", "application/json", 403},
+		{"POST", "multica.lan", "/api/action", "http://multica.lan", "text/plain", 403},
 	} {
 		r := httptest.NewRequest(tc.method, "http://"+tc.host+tc.path, strings.NewReader(`{"action":"status"}`))
 		r.Header.Set("Origin", tc.origin)
@@ -137,7 +139,7 @@ func TestOperatorKeyModes(t *testing.T) {
 	}
 }
 func TestProxyTranslatesOnlyItsOwnOrigin(t *testing.T) {
-	const public = "http://multica-user.localhost"
+	const public = "http://multica-user.lan"
 	var target string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", target+"/login")
