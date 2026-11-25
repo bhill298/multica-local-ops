@@ -195,6 +195,92 @@ Pi-hole. Follow both workspace links, sign in to each, and check that
 trusted certificate without an exception. The separate HTTP portal remains
 reachable from the allowed LAN subnet.
 
+## 7. Reach the same HTTPS site over WireGuard
+
+Get HTTPS working on Wi-Fi first. A remote client can then use the same
+bookmarks and certificate. In this example the router runs WireGuard, the
+VPN subnet is `10.77.0.0/24`, its gateway is `10.77.0.1`, and the Pi is
+`192.168.1.2`. Substitute your own addresses throughout.
+
+### Set up the tunnel and DNS
+
+1. Enable the router's WireGuard server, choose a VPN subnet that doesn't
+   overlap the LAN or the client's usual networks, and import a separate
+   peer profile on each device. Point the endpoint at the router's public
+   IP or DDNS name. Only the WireGuard UDP listener needs to be reachable
+   from the internet. Keep TCP 8443 private.
+2. Route the Pi's LAN address through the tunnel. A full-tunnel profile
+   already covers it. With split tunneling, include the Pi and the DNS
+   resolver addresses in the client's allowed routes. Allow VPN clients
+   to reach nginx on TCP 8443 and their resolver on UDP and TCP 53.
+3. On Wi-Fi, configure the router's LAN DHCP settings to advertise Pi-hole.
+   If the LAN advertises IPv6 DNS, supply Pi-hole there too. WireGuard
+   clients use the `DNS` entries from their imported profile. They don't
+   renew a LAN DHCP lease when the tunnel connects.
+4. For new profiles, you can set the VPN server's client DNS field to
+   Pi-hole before exporting them. Check the generated profile and make
+   sure Pi-hole accepts DNS from the routed VPN subnet. For existing
+   profiles that already list the VPN gateway as DNS, configure the
+   gateway to forward queries to Pi-hole. This works across domains and
+   avoids editing each device. [UniFi WireGuard server setup](https://help.ui.com/hc/en-us/articles/115005445768-UniFi-Gateway-WireGuard-VPN-Server)
+
+**UniFi settings used in the tested setup.** Under **Settings → Internet
+→ active WAN**, set IPv4 DNS to manual and enter Pi-hole as primary. Leave
+secondary empty unless you have a second resolver serving the same local
+records. If using an IPv6 upstream, enter Pi-hole's stable, reachable IPv6
+address there too. Set **Encrypted DNS** from **Auto** to **Off**. With Auto
+enabled, the gateway returned the public address and a fresh lookup never
+appeared in Pi-hole. These settings affect other clients using the gateway
+for DNS. Pi-hole needs its own independent upstream to avoid a forwarding
+loop. [UniFi DNS settings](https://help.ui.com/hc/en-us/articles/17484948645015-UniFi-DNS-Troubleshooting-Guide)
+
+### Allow the VPN clients through nginx
+
+In `/etc/nginx/conf.d/multica-https.conf`, keep your LAN rule and insert
+the VPN rule **above** `deny all;` in the same `server` block:
+
+```nginx
+allow 192.168.1.0/24;
+allow 10.77.0.0/24;
+deny all;
+```
+
+This admits every peer on that subnet to the landing page, both dashboards
+and the management controls. To admit one phone, use its assigned tunnel
+address with `/32` instead. Run `sudo nginx -t && sudo systemctl reload nginx`.
+
+### Verify from outside the LAN
+
+From a client that can reach the VPN gateway, compare its DNS replies with
+Pi-hole's. In PowerShell, substitute your zone and addresses:
+
+```powershell
+$zone = 'example.net'
+$gateway = '10.77.0.1'
+$pi = '192.168.1.2'
+foreach ($name in 'multica', 'multica-user', 'multica-admin') {
+    nslookup "$name.$zone" $pi
+    nslookup "$name.$zone" $gateway
+}
+nslookup $zone $gateway
+```
+
+Both resolvers should return the Pi for all three HTTPS names. If the
+bare zone is also your VPN endpoint, it should still return the router's
+public address. Check each resolver listed in the profile, including IPv6,
+from inside the tunnel. To trace forwarding, query a fresh name such as
+`wg-test-<timestamp>.example.net` through the gateway and look for it in
+Pi-hole's query log. Its appearance confirms forwarding even if the name
+has no record. Flushing the client DNS cache doesn't clear the gateway's.
+
+Finally, turn off Wi-Fi on the phone, connect WireGuard over cellular and
+open the landing page and both dashboard links. In the tested setup, the
+phone reached nginx with a valid certificate but received **403 Forbidden**
+until its VPN address was allowed. If that happens, reload the page while
+watching `sudo tail -f /var/log/nginx/error.log` for the denied client IP.
+If the router translates peer addresses, nginx sees the translated address;
+enforce any per-peer restrictions on the router in that case.
+
 ## Renewal and removal
 
 Check `crontab -l` as the acme.sh installation user for its scheduled
