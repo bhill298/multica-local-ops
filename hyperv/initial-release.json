@@ -1,6 +1,6 @@
 {
-  "version": "v0.11.1",
-  "commit": "e1fe10d6694848e35dd1aa00e08cd11d93e545ac",
-  "backend": "ghcr.io/multica-ai/multica-backend@sha256:49db0b3d2b1a711fd92c440fd564c79d85a660f59b834bc6917382c86c1e32f7",
-  "frontend": "ghcr.io/multica-ai/multica-web@sha256:037d3fada7cfc6150f7262d874346910cf12a7226549480539977da599593e92"
+  "version": "v0.13.0",
+  "commit": "35b54a3742bb51bdf5ffa688655367ec98044862",
+  "backend": "ghcr.io/multica-ai/multica-backend@sha256:ff3ce6c2356b4c938f9827a0753df212f36e38c9543dd83d3aabbadc4ee28c9f",
+  "frontend": "ghcr.io/multica-ai/multica-web@sha256:99ad104c2139da15568d071bea2e5807dbcdb7241613704a558f9daad8182af5"
 }
