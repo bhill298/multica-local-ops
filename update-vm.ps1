@@ -4,6 +4,7 @@ param(
     [Parameter(ParameterSetName='Plan')][switch]$Plan,
     [Parameter(ParameterSetName='Plan')][switch]$PassThru,
     [Parameter(Mandatory,ParameterSetName='Apply')][switch]$Apply,
+    [Parameter(ParameterSetName='Apply')][ref]$PreparedBackupId,
     [Parameter(Mandatory,ParameterSetName='Restore')][switch]$Restore,
     [Parameter(Mandatory,ParameterSetName='Clear')][switch]$Clear,
     [Parameter(Mandatory,ParameterSetName='Promote')][switch]$PromoteInstalled,
@@ -171,6 +172,7 @@ try {
         throw 'VM export is missing its configuration or virtual disk. Upgrade stopped before migration.'
     }
     $record.phase='backed-up'; $record | ConvertTo-Json | Set-Content $receipt
+    if ($PreparedBackupId) { $PreparedBackupId.Value=$BackupId }
     Invoke-GuestUpdate (@('activate')+$pins+@("$BackupId"))
     $record.phase='verified'; $record | ConvertTo-Json | Set-Content $receipt
     Write-Host "Updated to $($next.tag). Dashboard, team and all three runtime registrations passed."

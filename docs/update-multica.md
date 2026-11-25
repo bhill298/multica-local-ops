@@ -70,8 +70,12 @@ do not affect the result.
 The portal retries startup failures for about 45 seconds after the update.
 If a previously reachable URL stays down, the result says the upgrade was
 applied and Windows dashboard verification failed. It gives the URL, last
-HTTP or connection error, and backup location. The upgrade and backup stay
-in place. A URL down both times is reported as a pre-existing outage. A
+HTTP or connection error, and backup location. Once the checkpoint and export
+are ready, a failed web update also shows a restore command for that specific
+backup. Copy it into an administrator PowerShell window on the Windows host.
+The command uses the installed script's full path and works from any directory.
+Restoring is manual and rewinds the whole VM, including work done since the
+checkpoint. A URL down both times is reported as a pre-existing outage. A
 recovered URL passes. These checks run only for an actual web update.
 The standalone terminal updater finishes with the admin workspace paused;
 check its Windows login link after you bring that workspace back.

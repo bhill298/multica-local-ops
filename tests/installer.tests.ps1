@@ -17,6 +17,7 @@ try {
     & "$PSScriptRoot/upstream-sql.tests.ps1" -Fixture (Join-Path $temporary 'upstream-sql')
     $checks++
     & "$PSScriptRoot/dashboard-health.tests.ps1"
+    & "$PSScriptRoot/portal-restore.tests.ps1" -Fixture (Join-Path $temporary "operator's files")
     $checks++
     & "$PSScriptRoot/promote-release.tests.ps1" -Fixture (Join-Path $temporary 'promotion')
     $checks++

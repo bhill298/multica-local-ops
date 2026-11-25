@@ -1,7 +1,7 @@
 #Requires -Version 7.3
 param([ValidatePattern('^[A-Za-z0-9-]{1,50}$')][string]$Name='Multica-Ubuntu',
     [Parameter(Mandatory)][ValidateSet('status','check','start','stop','restart','install','boot-on','boot-off')][string]$Action,
-    [switch]$Elevated)
+    [switch]$Elevated,[guid]$RequestId)
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 $root=Join-Path $env:ProgramFiles "MulticaVM/$Name"
@@ -43,11 +43,13 @@ if ($Action -eq 'check') {
     return
 }
 if (!$Elevated) {
-    $arg='-NoLogo -NoProfile -NonInteractive -File "{0}" -Name {1} -Action {2} -Elevated' -f $PSCommandPath,$Name,$Action
+    $RequestId=[guid]::NewGuid()
+    $arg='-NoLogo -NoProfile -NonInteractive -File "{0}" -Name {1} -Action {2} -Elevated -RequestId {3}' -f $PSCommandPath,$Name,$Action,$RequestId
     $proc=Start-Process (Get-Process -Id $PID).Path -Verb RunAs -WindowStyle Hidden -ArgumentList $arg -Wait -PassThru
     $receipt=Get-Content "$root/portal/action-result.json" -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
-    if ($proc.ExitCode -or !$receipt -or $receipt.action -ne $Action) { throw "Operation failed. $($receipt.message)" }
+    if (!$receipt -or $receipt.requestId -ne "$RequestId" -or $receipt.action -ne $Action) { throw 'Operation ended without a matching result.' }
     $receipt.message
+    if ($proc.ExitCode -or !$receipt.ok) { exit 1 }
     return
 }
 $vm=Get-VM -Id $state.id
@@ -60,6 +62,7 @@ try {
       'boot-on' { Enable-ScheduledTask -TaskName "$Name unattended boot" | Out-Null; $message='VM startup at Windows boot enabled.' }
       'boot-off' { Disable-ScheduledTask -TaskName "$Name unattended boot" | Out-Null; $message='VM startup at Windows boot disabled.' }
       'install' {
+        $preparedBackup=$null
         $plan=Get-Plan
         if (!$plan.available) { $message="Already up to date ($($plan.tag))."; break }
         Get-GuestReport -Idle
@@ -68,7 +71,7 @@ try {
         $applyError=$null
         try {
             ssh @ssh 'sudo bash /opt/multica-local/hyperv/admin.sh stop'
-            & $updater -Apply -Version $plan.tag -Name $Name -Directory $config.directory -WarningVariable applyWarnings
+            & $updater -Apply -Version $plan.tag -Name $Name -Directory $config.directory -PreparedBackupId ([ref]$preparedBackup) -WarningVariable applyWarnings
         } catch { $applyError=$_.Exception.Message }
         try {
             $PSNativeCommandUseErrorActionPreference=$false
@@ -96,9 +99,16 @@ try {
       }
     }
     $ok=$true
-} catch { $message=$_.Exception.Message; throw } finally {
+} catch {
+    $message=$_.Exception.Message
+    if ($Action -eq 'install' -and $preparedBackup) {
+        $restore="& '" + $updater.Replace("'","''") + "' -Name $Name -Restore -BackupId $preparedBackup"
+        $message="To restore the whole VM, run in administrator PowerShell:`n$restore`n`n$message"
+    }
+    throw
+} finally {
     try {
-        @{action=$Action;message=$message;ok=$ok} | ConvertTo-Json | Set-Content "$root/portal/action-result.json"
+        @{requestId="$RequestId";action=$Action;message=$message;ok=$ok} | ConvertTo-Json | Set-Content "$root/portal/action-result.json"
         & "$root/Sync-GuestAddress.ps1" -VMId $vm.Id
     } finally { $lock.Dispose() }
 }
