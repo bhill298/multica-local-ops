@@ -9,6 +9,8 @@
 <nav aria-label="Dashboards"><a href="/user">Daily workspace</a><a href="/admin">VM administration</a><a href="/manage">Manage installation</a></nav>
 <div id="manage" hidden><section><h2>Installation status</h2><p id="summary" role="status"></p><div id="details"></div></section>
 <div id="controls" hidden><section><div class="actions"><button data-action="status">Refresh status</button><button data-action="start">Start VM</button><button data-action="restart">Restart VM</button><button data-action="stop">Shut down VM</button><button id="boot" hidden>Change startup</button></div></section>
-<section><h2>Upstream updates</h2><div class="actions"><button data-action="check">Check for updates</button><button data-action="install">Install latest stable release</button></div><p>Updates use the VM checkpoint and export backup. Windows may ask for approval.</p></section></div>
+<section><h2>Upstream updates</h2><div class="actions"><button data-action="check">Check for updates</button><button data-action="install">Install latest stable release</button></div>
+<p><a href="https://github.com/multica-ai/multica/releases/latest" target="_blank" rel="noopener noreferrer">Read the latest release notes on GitHub</a></p>
+<p>Updates use the VM checkpoint and export backup. Windows may ask for approval.</p></section></div>
 <pre id="result" aria-live="polite"></pre></div>
 </main><script src="/portal.js"></script></body></html>
